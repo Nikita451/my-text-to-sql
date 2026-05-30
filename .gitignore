@@ -14,8 +14,10 @@ data/                   # Скрываем папку с сырыми данны
 .chroma/                # Кэш векторной базы данных Chroma
 .qdrant/                # Кэш векторной базы Qdrant
 .qdrant_storage/
+postgres_storage/
 .env 
 qdrant_storage/
+.postgres_storage/
 info/
 
 

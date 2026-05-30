@@ -18,10 +18,9 @@
 
 ## Как запустить
 
-### Локальный запуск qdrant.
-docker run -d --rm --name qdrant_new -p 6333:6333 -p 6334:6334 \
-    -v $(pwd)/qdrant_storage:/qdrant/storage:z \
-    qdrant/qdrant:v1.18.0
+### Локальный запуск qdrant и postgres.
+docker compose up -d
+
 http://localhost:6333/dashboard
 
 ### Создание схемы и загрузка тестовых документов:
@@ -30,3 +29,12 @@ uv run prepare_qdrant_data.py
 ### Запуск графа
 uv run agent.py
 
+
+
+
+Этапы разработки
+1) RAG-> SQL_GEN
+2) RAG -> SQL_GEN -> PG
+3) RAG -> SQL_GEN -> PG -> Answear 
+4) RAG -> SQL_GEN -> PG -> Answear (with Memory)
+-5) Agentic Loop

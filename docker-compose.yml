@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  adminer:
+    image: adminer:latest
+    container_name: adminer_container
+    ports:
+      - "8080:8080"
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant_container
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      # Указываем относительный путь И добавляем флаг :z в конце через двоеточие
+      - ./qdrant_storage:/qdrant/storage:z
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_container
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+    volumes:
+      # Для Postgres тоже сделаем локальную папку с флагом :z для надежности
+      - ./postgres_storage:/var/lib/postgresql/data:z
