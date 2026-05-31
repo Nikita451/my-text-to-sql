@@ -28,3 +28,10 @@ info/
 # === Операционная система ===
 .DS_Store
 Thumbs.db
+
+
+# Кэш компиляции Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
