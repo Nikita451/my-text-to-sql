@@ -11,6 +11,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Импортируем скомпилированный граф из вашего файла
 from agent_graph import app
+from config.common_config import settings
 
 load_dotenv()
 # uv run python -m tests.eval_tests
@@ -31,7 +32,7 @@ if not OPENROUTER_API_KEY:
     raise ValueError("OPENROUTER_API_KEY не найден в .env")
 
 judge_llm = ChatOpenRouter(
-    model="openai/gpt-4o-mini",
+    model=settings.model,
     api_key=SecretStr(OPENROUTER_API_KEY),
     temperature=0
 ).with_structured_output(TestCaseEvaluation)

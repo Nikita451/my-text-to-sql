@@ -18,6 +18,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver 
 from pydantic import SecretStr
 from dotenv import load_dotenv
+from config.common_config import settings
 
 load_dotenv()
 
@@ -52,14 +53,14 @@ if not OPENROUTER_API_KEY:
 
 # основная модель для генерации SQL (со Structured Outputs)
 llm = ChatOpenRouter(
-    model="openai/gpt-4o-mini", 
+    model=settings.model, 
     api_key=SecretStr(OPENROUTER_API_KEY),
     temperature=0
 )
 structured_llm = llm.with_structured_output(GeneratedSQL)
 
 response_llm = ChatOpenRouter(
-    model="openai/gpt-4o-mini",
+    model=settings.model,
     api_key=SecretStr(OPENROUTER_API_KEY),
     temperature=0.5
 )

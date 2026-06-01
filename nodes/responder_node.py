@@ -18,7 +18,7 @@ RESPONDER_SYSTEM_PROMPT = """Вы — вежливый ИИ-ассистент, 
 """
 
 response_llm = ChatOpenRouter(
-    model="openai/gpt-4o-mini",
+    model=settings.model,
     api_key=SecretStr(settings.openrouter_api_key),
     temperature=0.5
 )

@@ -31,7 +31,7 @@ class GeneratedSQL(BaseModel):
     sql_query: str = Field(description="Чистый SQL-запрос")
 
 llm = ChatOpenRouter(
-    model="openai/gpt-4o-mini", 
+    model=settings.model, 
     api_key=SecretStr(settings.openrouter_api_key),
     temperature=0
 )

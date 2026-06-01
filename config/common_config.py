@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     pg_password: str = Field(default=...)
     pg_host: str = Field(default=...)
     pg_port: int = Field(default=...)
+    model: str = Field(default=...)
     
     # Настройки для Pydantic: указываем файл окружения
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

@@ -23,6 +23,7 @@ from langgraph.graph.message import add_messages
 
 from tools.pg_tool import execute_sql_query_tool
 from tools.qdrant_tool import get_db_schema_tool 
+from config.common_config import settings
 
 load_dotenv()
 
@@ -40,7 +41,7 @@ if not OPENROUTER_API_KEY:
 tools = [get_db_schema_tool, execute_sql_query_tool]
 
 llm = ChatOpenRouter(
-    model="openai/gpt-4o-mini", 
+    model=settings.model, 
     api_key=SecretStr(OPENROUTER_API_KEY),
     temperature=0
 ).bind_tools(tools) # Передаем инструменты в модель на уровне API!
