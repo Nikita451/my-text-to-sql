@@ -15,9 +15,18 @@ class Settings(BaseSettings):
     pg_host: str = Field(default=...)
     pg_port: int = Field(default=...)
     model: str = Field(default=...)
-    
+    langfuse_public_key: str = Field(default=...)
+    langfuse_secret_key: str = Field(default=...)
+    langfuse_base_url: str = Field(default=...)
+    lf_pg_user: str = Field(default=...)
+    lf_pg_password: str = Field(default=...)
+    lf_pg_db: str = Field(default=...)
+
     # Настройки для Pydantic: указываем файл окружения
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", 
+                                      env_file_encoding="utf-8", 
+                                      extra="ignore"  # ← Игнорировать лишние переменные
+                                    )
 
 settings = Settings()
 

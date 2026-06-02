@@ -1,11 +1,10 @@
-version: '3.8'
-
 services:
   adminer:
     image: adminer:latest
     container_name: adminer_container
     ports:
       - "8080:8080"
+
   qdrant:
     image: qdrant/qdrant:latest
     container_name: qdrant_container
@@ -13,18 +12,58 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      # Указываем относительный путь И добавляем флаг :z в конце через двоеточие
       - ./qdrant_storage:/qdrant/storage:z
 
   postgres:
     image: postgres:16-alpine
     container_name: postgres_container
     environment:
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
-      POSTGRES_DB: mydb
+      POSTGRES_DB: ${PG_DB}
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
-      # Для Postgres тоже сделаем локальную папку с флагом :z для надежности
       - ./postgres_storage:/var/lib/postgresql/data:z
+
+  # LangFuse
+  my-text-to-sql-langfuse-postgres-1:
+    image: docker.io/postgres:${POSTGRES_VERSION:-17}
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - 127.0.0.1:5433:5432
+    volumes:
+      - langfuse_postgres_data:/var/lib/postgresql/data
+
+  my-text-to-sql-langfuse-web-1:
+    image: langfuse/langfuse:2.60.0
+    restart: always
+    depends_on:
+      my-text-to-sql-langfuse-postgres-1:
+        condition: service_healthy
+    environment:
+      # Жестко прописываем подключение к вашему контейнеру langfuse-postgres
+      - DATABASE_URL=postgresql://postgres:postgres@my-text-to-sql-langfuse-postgres-1:5432/postgres
+      # ОБЯЗАТЕЛЬНО ДЛЯ V2: локальный адрес веб-интерфейса
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=secret_string_for_local_dev
+      - SALT=salt_string_for_local_dev
+      - TELEMETRY_ENABLED=false
+    ports:
+      - "0.0.0.0:3000:3000"
+
+
+
+volumes:
+  langfuse_postgres_data:

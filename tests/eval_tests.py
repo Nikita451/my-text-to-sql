@@ -8,6 +8,8 @@ from langchain_openrouter import ChatOpenRouter
 from dotenv import load_dotenv
 from state import AgentState
 import sys
+import uuid
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Импортируем скомпилированный граф из вашего файла
 from agent_graph import app
@@ -101,10 +103,15 @@ def run_evaluations() -> None:
         print(f"\n──────────────────────────────────────────────────")
         print(f"📋 Запуск тест-кейса {test['id']}: '{test['question']}'")
         
-        # Задаем чистую конфигурацию потока с финансовым предохранителем recursion_limit
         config = RunnableConfig(
-            configurable={"thread_id": f"eval_thread_{test['id']}"},
-            recursion_limit=8  # Защита от бесконечного списания денег при зацикливании в тестах!
+            configurable={
+                "thread_id": f"eval_thread_{test['id']}_{uuid.uuid4().hex[:8]}"
+            },
+            recursion_limit=8,
+            tags=["eval", f"dataset_{test.get('set_name', 'default')}"],
+            metadata={
+                "environment": "testing"
+            }
         )
         
         # Инициализируем стартовое состояние

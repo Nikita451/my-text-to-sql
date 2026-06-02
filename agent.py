@@ -1,12 +1,31 @@
+from types import ModuleType
+
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 from state import AgentState
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from agent_graph import app
 
+from langfuse.callback import CallbackHandler
+
+langfuse_callback = CallbackHandler()
 
 if __name__ == "__main__":
-    config = RunnableConfig(configurable={"thread_id": "agent_loop_thread"}, recursion_limit=10)
+    config = RunnableConfig(
+        configurable={"thread_id": "agent_loop_thread"},
+        recursion_limit=10,
+        callbacks=[langfuse_callback],
+        tags=["production", "cli_user"],
+        metadata={
+            "environment": "production",
+            "langfuse_session_id": "agent_loop_thread",
+            "langfuse_user_id": "cli_user",
+            "langfuse_trace_name": "agent_loop_execution"
+        }
+    )
     
     # --- ШАГ 1: Вопрос по известным таблицам ---
     print("\n--- ВОПРОС 1 ---")
@@ -37,6 +56,7 @@ if __name__ == "__main__":
         
     final_messages = app.get_state(config).values["messages"]
     print(f"Робот: {final_messages[-1].content}")
+
 
 """
 --- ВОПРОС 1 ---

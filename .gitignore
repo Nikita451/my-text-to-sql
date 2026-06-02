@@ -19,6 +19,8 @@ postgres_storage/
 qdrant_storage/
 .postgres_storage/
 info/
+langfuse_db_storage/
+langfuse_clickhouse_storage/
 
 
 # === Секреты и Переменные окружения ===
