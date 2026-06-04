@@ -57,7 +57,11 @@ llm = ChatOpenRouter(
     api_key=SecretStr(OPENROUTER_API_KEY),
     temperature=0
 )
-structured_llm = llm.with_structured_output(GeneratedSQL)
+structured_llm_w = llm.with_structured_output(GeneratedSQL)
+structured_llm = structured_llm_w.with_retry(
+    stop_after_attempt=3,
+    wait_exponential_jitter=True # делает паузы между попытками чуть-чуть случайными
+)
 
 response_llm = ChatOpenRouter(
     model=settings.model,

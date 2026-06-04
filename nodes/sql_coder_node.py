@@ -35,7 +35,12 @@ llm = ChatOpenRouter(
     api_key=SecretStr(settings.openrouter_api_key),
     temperature=0
 )
-sql_coder_llm = llm.with_structured_output(GeneratedSQL)
+sql_coder_llm_u = llm.with_structured_output(GeneratedSQL)
+
+sql_coder_llm = sql_coder_llm_u.with_retry(
+    stop_after_attempt=3,
+    wait_exponential_jitter=True # делает паузы между попытками чуть-чуть случайными
+)
 
 def sql_coder_node(state: AgentState) -> Command:
     """Узел-Программист: пишет SQL, выполняет в Postgres и сам чинит баги (до 3 попыток)."""

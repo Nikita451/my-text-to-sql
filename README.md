@@ -124,8 +124,10 @@ uv run agent.py
 4) RAG -> SQL_GEN -> PG -> Answear (with Memory)
 5) Agentic Loop: Agent + Tools (3 задачи на одном агенте)
 6) Multi Agents + Loop. (Tools <-> nodes) + паттерн Command вместо условных ребер
-
+7) Langfuse
+8) Streaming Fast api
 
 Вопросы:
 1) Условные ребра VS паттерг command.
 2) Tools vs Nodes (на примере мульти-агента)
+3) Langfuse и асинхронный генератор (thread_id static/dynamic...)
