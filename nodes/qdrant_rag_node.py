@@ -42,7 +42,7 @@ def qdrant_rag_node(state: AgentState) -> Command:
             )
         ],
         query=FusionQuery(fusion=Fusion.RRF),
-        limit=2,
+        limit=3,
         with_payload=True
     )
     

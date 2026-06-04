@@ -31,7 +31,7 @@ def get_db_schema_tool(search_query: str) -> str:
             )
         ],
         query=FusionQuery(fusion=Fusion.RRF),
-        limit=2,
+        limit=3,
         with_payload=True
     )
     
