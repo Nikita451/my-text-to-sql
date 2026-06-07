@@ -23,7 +23,7 @@ response_llm = ChatOpenRouter(
     temperature=0.5
 )
 
-def responder_node(state: AgentState) -> Command:
+async def responder_node(state: AgentState) -> Command:
     print("✍️ [АГЕНТ-КОПИРАЙТЕР]: Стилизую ответ для пользователя...")
     
     # 1. Извлекаем данные из Postgres
@@ -48,7 +48,7 @@ def responder_node(state: AgentState) -> Command:
         sql_result=sql_result_data
     )
     
-    response = response_llm.invoke(formatted_prompt)
+    response = await response_llm.ainvoke(formatted_prompt)
     
     # В самом конце мы возвращаем ответ в messages, чтобы пользователь его увидел,
     # и ОБЯЗАТЕЛЬНО очищаем sql_result, чтобы на следующем вопросе Роутер не запутался!

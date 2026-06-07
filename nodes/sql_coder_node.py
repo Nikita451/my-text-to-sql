@@ -1,13 +1,19 @@
 from typing import Dict, Any, List, cast, LiteralString
+
+from psycopg_pool import AsyncConnectionPool
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_openrouter import ChatOpenRouter
 import psycopg
 from psycopg import sql
+from psycopg import AsyncConnection
 from pydantic import BaseModel, Field, SecretStr
 from state import AgentState
 import os
 from config.common_config import settings
 from langgraph.types import Command
+from config.db import db_pool, fastembed_executor
+
+CONN_STR = f"host={os.getenv('PG_HOST', 'localhost')} port={os.getenv('PG_PORT', '5432')} dbname={os.getenv('PG_DB', 'mydb')} user={os.getenv('PG_USER', 'myuser')} password={os.getenv('PG_PASSWORD', 'mypassword')}"
 
 SQL_CODER_SYSTEM_PROMPT = """Вы — изолированный ИИ-модуль, отвечающий за написание и исправление SQL-запросов для PostgreSQL.
 
@@ -24,8 +30,6 @@ SQL_CODER_SYSTEM_PROMPT = """Вы — изолированный ИИ-модул
 3. Пишите чистый SQL без markdown-разметки (без ```sql).
 """
 
-CONN_STR = f"host={os.getenv('PG_HOST', 'localhost')} port={os.getenv('PG_PORT', '5432')} dbname={os.getenv('PG_DB', 'mydb')} user={os.getenv('PG_USER', 'myuser')} password={os.getenv('PG_PASSWORD', 'mypassword')}"
-
 class GeneratedSQL(BaseModel):
     reasoning: str = Field(description="Логика рассуждения")
     sql_query: str = Field(description="Чистый SQL-запрос")
@@ -35,14 +39,14 @@ llm = ChatOpenRouter(
     api_key=SecretStr(settings.openrouter_api_key),
     temperature=0
 )
-sql_coder_llm_u = llm.with_structured_output(GeneratedSQL)
+sql_coder_llm = llm.with_structured_output(GeneratedSQL)
 
-sql_coder_llm = sql_coder_llm_u.with_retry(
-    stop_after_attempt=3,
-    wait_exponential_jitter=True # делает паузы между попытками чуть-чуть случайными
-)
+# sql_coder_llm = sql_coder_llm_u.with_retry(
+#     stop_after_attempt=3,
+#     wait_exponential_jitter=True # делает паузы между попытками чуть-чуть случайными
+# )
 
-def sql_coder_node(state: AgentState) -> Command:
+async def sql_coder_node(state: AgentState) -> Command:
     """Узел-Программист: пишет SQL, выполняет в Postgres и сам чинит баги (до 3 попыток)."""
     print("💻 [АГЕНТ-ПРОГРАММИСТ]: Начинаю генерацию и выполнение SQL-запроса...")
     
@@ -68,27 +72,37 @@ def sql_coder_node(state: AgentState) -> Command:
         HumanMessage(content=f"Напиши SQL-запрос для задачи: {user_question}")
     ]
     
-    max_attempts = 3
+    max_attempts = 4
     last_generated_query = ""
     
     for attempt in range(1, max_attempts + 1):
         print(f"🤖 [АГЕНТ-ПРОГРАММИСТ]: Попытка {attempt} из {max_attempts}...")
         
         # 1. Заставляем модель сгенерировать SQL по строгой схеме Pydantic
-        response: GeneratedSQL = sql_coder_llm.invoke(coder_messages) # type: ignore
+        response: GeneratedSQL = await sql_coder_llm.ainvoke(coder_messages) # type: ignore
+        if response is None:
+            print(f"⚠️ Модель вернула None или не смогла распарсить JSON на попытке {attempt}.")
+            coder_messages.append(HumanMessage(
+                content=f"⚠️ Ошибка: Твой прошлый ответ не соответствовал JSON-схеме Pydantic или был пуст. Пожалуйста, строго следуй формату и не пиши лишнего текста."
+            ))
+            continue
+
         last_generated_query = response.sql_query
         
         print(f"📝 [АГЕНТ-ПРОГРАММИСТ]: Сгенерирован SQL: {last_generated_query}")
         
         # 2. Пытаемся выполнить его в PostgreSQL
         try:
-            with psycopg.connect(CONN_STR) as conn:
-                with conn.cursor() as cur:
+            # with psycopg.connect(CONN_STR) as conn:
+            #   with conn.cursor() as cur:
+            # async with await AsyncConnection.connect(CONN_STR) as conn:
+            async with db_pool.connection() as conn:  
+                async with conn.cursor() as cur:
                     safe_query = cast(LiteralString, last_generated_query)
-                    cur.execute(safe_query)
+                    await cur.execute(safe_query)
                     
                     colnames = [desc.name for desc in cur.description] if cur.description else []
-                    rows = cur.fetchall() if cur.description else []
+                    rows = await cur.fetchall() if cur.description else []
                     
                     # Если всё выполнилось успешно, собираем результат в строку и выходим из цикла!
                     sql_result_str = f"Колонки: {colnames}\nСтроки:\n" + "\n".join([str(row) for row in rows])

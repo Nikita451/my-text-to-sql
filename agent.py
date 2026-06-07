@@ -1,18 +1,47 @@
+from contextlib import asynccontextmanager
+
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import json
 import asyncio
 from typing import AsyncGenerator
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langfuse.callback import CallbackHandler
-
+import uuid
+from config.db import db_pool, fastembed_executor
 
 from agent_graph import app
 from state import AgentState
+from langfuse.decorators import observe, langfuse_context
+from config.db import async_qdrant_client
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. КОД ПРИ ЗАПУСКЕ СЕРВЕРА
+    print("⏳ [LIFESPAN]: Асинхронно открываем пул соединений с PostgreSQL...")
+    await db_pool.open()
+    print("✅ [LIFESPAN]: Пул PostgreSQL готов к работе.")
+    
+    yield  # В этой точке сервер FastAPI стартует и начинает слушать порт 8000
+    
+    # 2. КОД ПРИ ВЫКЛЮЧЕНИИ СЕРВЕРА
+    print("⏳ [LIFESPAN]: Закрываем пулы соединений и фоновых потоков...")
+    await db_pool.close()
+
+    await async_qdrant_client.close() 
+    print("✅ [LIFESPAN]: Сессия Qdrant успешно закрыта.")
+    
+    # Флаг wait=False важен для reload=True, чтобы uvicorn не зависал при перезапуске кода
+    fastembed_executor.shutdown(wait=False) 
+    print("🛑 [LIFESPAN]: Все пулы успешно остановлены. Сервер выключен.")
+
 
 # Описываем структуру входящего запроса от фронтэнда
 class ChatRequest(BaseModel):
@@ -20,6 +49,7 @@ class ChatRequest(BaseModel):
     thread_id: str = Field("default_web_thread", description="Идентификатор сессии для работы памяти диалога")
 
 app_fastapi = FastAPI(
+    lifespan=lifespan,
     title="AI SQL Analyst API",
     description="Backend API для мультиагентного Text-to-SQL ассистента",
     version="1.0.0"
@@ -37,20 +67,20 @@ app_fastapi.add_middleware(
 async def run_agent_stream(user_message: str, thread_id: str) -> AsyncGenerator[str, None]:
     """Асинхронный генератор, который запускает граф и стримит шаги работы агентов на фронтенд."""
     langfuse_callback = CallbackHandler()
+    session_thread_id = thread_id or f"production_thread_{uuid.uuid4().hex[:8]}"
     config = RunnableConfig(
-        configurable={"thread_id": thread_id},
+        configurable={"thread_id": session_thread_id},
         recursion_limit=10,
         callbacks=[langfuse_callback],
         tags=["production", "cli_user"],
         metadata={
             "environment": "production",
-            "langfuse_session_id": thread_id,
+            "langfuse_session_id": session_thread_id,
             "langfuse_user_id": "cli_user",
-            "langfuse_trace_name": "agent_loop_execution"
+            "langfuse_trace_name": "prod_loop_execution"
         }
     )
     
-    # "Покажи email пользователей с максимальными тратами
     initial_state: AgentState = {
         "messages": [HumanMessage(content=user_message)],
         "context": "",
@@ -71,7 +101,6 @@ async def run_agent_stream(user_message: str, thread_id: str) -> AsyncGenerator[
                     "message": f"Агент {node_name} успешно завершил шаг."
                 }
                 
-                # Специальные красивые уведомления для пользователя в зависимости от узла
                 if node_name == "router":
                     status_update["message"] = "🧠 Роутер анализирует контекст и выбирает исполнителя..."
                 elif node_name == "qdrant_rag":
@@ -85,7 +114,6 @@ async def run_agent_stream(user_message: str, thread_id: str) -> AsyncGenerator[
                 yield f"data: {json.dumps(status_update, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.1) # Минимальная пауза для стабильности потока
                 
-        # В самом конце диалога вытаскиваем финальное состояние из памяти, чтобы отдать текст ответа
         state_data = await app.aget_state(config)
         final_messages = state_data.values.get("messages", [])
         
@@ -104,14 +132,13 @@ async def run_agent_stream(user_message: str, thread_id: str) -> AsyncGenerator[
         }
         yield f"data: {json.dumps(error_response, ensure_ascii=False)}\n\n"
     finally:
-        # КРИТИЧЕСКИ ВАЖНО ДЛЯ SSE: принудительно отправляем все трейсы в Langfuse
-        # перед тем, как FastAPI закроет соединение
-        langfuse_callback.flush()
+        langfuse_context.flush()
     
 
 @app_fastapi.post("/api/chat")
-async def chat_endpoint(request: ChatRequest):
+async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks):
     """Эндпоинт для отправки сообщений агенту со стримингом процесса размышлений."""
+
     return StreamingResponse(
         run_agent_stream(request.message, request.thread_id),
         media_type="text/event-stream"
@@ -119,7 +146,7 @@ async def chat_endpoint(request: ChatRequest):
 
 @app_fastapi.get("/")
 def read_root():
-    return {"status": "ok", "message": "FastAPI works!"}
+    return {"status": "ok", "message": "FastAPI works 13!"}
 
 
 if __name__ == "__main__":
@@ -143,4 +170,3 @@ curl -X POST http://localhost:8000/api/chat \
 
    
 """
-

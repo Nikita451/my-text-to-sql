@@ -14,8 +14,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Импортируем скомпилированный граф из вашего файла
 from agent_graph import app
 from config.common_config import settings
+from langfuse.callback import CallbackHandler
 
 load_dotenv()
+
+langfuse_callback = CallbackHandler()
 # uv run python -m tests.eval_tests
 
 # ==========================================
@@ -102,15 +105,19 @@ def run_evaluations() -> None:
     for test in EVAL_DATASET:
         print(f"\n──────────────────────────────────────────────────")
         print(f"📋 Запуск тест-кейса {test['id']}: '{test['question']}'")
-        
+        thread_id = f"eval_thread_{test['id']}_{uuid.uuid4().hex[:8]}"
         config = RunnableConfig(
             configurable={
-                "thread_id": f"eval_thread_{test['id']}_{uuid.uuid4().hex[:8]}"
+                "thread_id": thread_id,
             },
+            callbacks=[langfuse_callback],
             recursion_limit=8,
             tags=["eval", f"dataset_{test.get('set_name', 'default')}"],
             metadata={
-                "environment": "testing"
+                "environment": "testing",
+                "langfuse_session_id": thread_id,
+                "langfuse_user_id": "test_user",
+                "langfuse_trace_name": "test_agent_loop_execution"
             }
         )
         
@@ -125,6 +132,12 @@ def run_evaluations() -> None:
         try:
             # Прогоняем тест через ваш реальный мультиагентный граф
             final_state = app.invoke(initial_state, config=config)
+
+            # !!!!!
+            # for event in app.stream(initial_state, config=config, stream_mode="values"):
+            #   pass # Запускаем стриминг для прогона всех внутренних петель графа
+              
+            # final_state = app.get_state(config).values["messages"]
             
             # Извлекаем данные, которые сгенерировал агент в процессе работы
             actual_context = final_state.get("context", "Пусто")

@@ -1,4 +1,6 @@
-from typing import Dict, Any, List
+import onnxruntime as ort
+from typing import Dict, Any, List, Tuple
+from qdrant_client import AsyncQdrantClient
 from langgraph.types import Command
 from fastembed import SparseTextEmbedding, TextEmbedding
 from langchain_core.messages import AIMessage
@@ -6,13 +8,72 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Prefetch, FusionQuery, Fusion, SparseVector
 from state import AgentState
 from config.common_config import settings
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from config.db import fastembed_executor, async_qdrant_client
 
-qdrant_client = QdrantClient(url=settings.qdrant_url)
+# 1. Создаем настройки для ONNX Runtime
+session_options = ort.SessionOptions()
+
+# Ограничиваем количество потоков (Внутренние потоки C++)
+session_options.intra_op_num_threads = 2
+session_options.inter_op_num_threads = 2
+
+# Отключаем глобальный пул потоков, чтобы сессия использовала только свои личные
+session_options.use_per_session_threads = True 
+
 # Инициализируем локальные эмбеддинги
-dense_model = TextEmbedding(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-sparse_model = SparseTextEmbedding(model_name="prithivida/Splade_PP_en_v1")
+dense_model = TextEmbedding(
+    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    session_options=session_options
+)
+sparse_model = SparseTextEmbedding(
+    model_name="prithivida/Splade_PP_en_v1",
+    session_options=session_options
+)
 
-def qdrant_rag_node(state: AgentState) -> Command:
+async def get_embedding_async(user_text: str) -> list[float]:
+    """Асинхронная обертка над FastEmbed с использованием нашего пула."""
+    
+    # Получаем текущий запущенный Event Loop
+    loop = asyncio.get_running_loop()
+    
+    # Аналог "промисификации" в JS, но с привязкой к конкретному пулу потоков.
+    # Шаблон: loop.run_in_executor(пул, функция_без_скобок, аргумент1, аргумент2...)
+    dense_embeddings = await loop.run_in_executor(
+        fastembed_executor, 
+        dense_model.embed, 
+        [user_text]
+    )
+    
+    # Превращаем результат генератора в обычный список
+    # (так как list() тоже занимает время, его лучше делать прямо здесь)
+    return list(dense_embeddings)[0].tolist()
+
+async def generate_rag_vectors(user_text: str) -> Tuple[List[float], list]:
+    """
+    Одновременно и асинхронно генерирует плотный и разреженный векторы,
+    используя единый кастомный пул потоков.
+    """
+    loop = asyncio.get_running_loop()
+    
+    # 1. Запускаем обе тяжелые задачи в пул потоков параллельно
+    dense_task = loop.run_in_executor(
+        fastembed_executor, 
+        lambda: list(dense_model.embed([user_text]))[0].tolist()
+    )
+    
+    sparse_task = loop.run_in_executor(
+        fastembed_executor, 
+        lambda: list(sparse_model.embed([user_text]))
+    )
+    
+    # 2. Ждем выполнения обеих задач
+    query_dense, query_sparse = await asyncio.gather(dense_task, sparse_task)
+    
+    return query_dense, query_sparse
+
+async def qdrant_rag_node(state: AgentState) -> Command:
     """Узел-Библиотекарь: ищет схемы в Qdrant и сохраняет их в контекст графа."""
     print("📚 [АГЕНТ QDRANT]: Начинаю поиск DDL-схем и метаданных в базе знаний...")
     
@@ -24,11 +85,11 @@ def qdrant_rag_node(state: AgentState) -> Command:
     user_text: str = str(state["messages"][-1].content)
     
     # 1. Генерируем плотный и разреженный векторы локально через FastEmbed
-    query_dense = list(dense_model.embed([user_text]))[0].tolist()
-    query_sparse = list(sparse_model.embed([user_text]))
+    query_dense, query_sparse = await generate_rag_vectors(user_text)
     
     # 2. Выполняем гибридный поиск (Dense + Sparse через RRF) в вашей коллекции db_metadata
-    search_result = qdrant_client.query_points(
+    search_result = await async_qdrant_client.query_points(
+    
         collection_name="db_metadata",
         prefetch=[
             Prefetch(query=query_dense, using="dense", limit=3),

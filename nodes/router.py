@@ -39,7 +39,7 @@ router_llm = ChatOpenRouter(
 ).with_structured_output(RouterDecision)
 
 
-def router_node(state: AgentState) -> Command:
+async def router_node(state: AgentState) -> Command:
     """Узел-диспетчер: принимает решение на основе ИИ или жесткой Python-логики."""
 
     if state.get("sql_result"):
@@ -59,7 +59,7 @@ def router_node(state: AgentState) -> Command:
     system_content += "Если данные из SQL-базы уже получены (Да), ты ОБЯЗАН выбрать 'general_responder'."
 
     prompt = [SystemMessage(content=system_content)] + messages
-    decision: RouterDecision = router_llm.invoke(prompt) # type: ignore
+    decision: RouterDecision = await router_llm.ainvoke(prompt) # type: ignore
     
     print(f"🧠 [РОУТЕР]: {decision.reasoning} ➡️ Направляю к: {decision.next_agent}")
     return Command(goto=decision.next_agent)
