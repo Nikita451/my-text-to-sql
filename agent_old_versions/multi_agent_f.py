@@ -33,7 +33,9 @@ if __name__ == "__main__":
         "messages": [HumanMessage(content="Покажи email пользователей с максимальными тратами")],
         "context": "",
          "sql_result": "",
-         "sql_query": ""
+         "sql_query": "",
+         "db_name": "mydb",
+        "col_name": "db_metadata",
     }
 
     for event in app.stream(input_1, config=config, stream_mode="values"):
@@ -48,7 +50,9 @@ if __name__ == "__main__":
         "messages": [HumanMessage(content="А сколько заказов сделал самый активный пользователь?")],
         "context": "",
         "sql_result": "",
-        "sql_query": ""
+        "sql_query": "",
+        "db_name": "mydb",
+        "col_name": "db_metadata",
     }
 
     for event in app.stream(input_2, config=config, stream_mode="values"):

@@ -11,7 +11,7 @@ from state import AgentState
 import os
 from config.common_config import settings
 from langgraph.types import Command
-from config.db import db_pool, fastembed_executor
+from config.db_manager import pool_manager
 
 CONN_STR = f"host={os.getenv('PG_HOST', 'localhost')} port={os.getenv('PG_PORT', '5432')} dbname={os.getenv('PG_DB', 'mydb')} user={os.getenv('PG_USER', 'myuser')} password={os.getenv('PG_PASSWORD', 'mypassword')}"
 
@@ -74,6 +74,8 @@ async def sql_coder_node(state: AgentState) -> Command:
     
     max_attempts = 4
     last_generated_query = ""
+    db_name = state["db_name"]
+    db_pool = await pool_manager.get_pool(db_name)
     
     for attempt in range(1, max_attempts + 1):
         print(f"🤖 [АГЕНТ-ПРОГРАММИСТ]: Попытка {attempt} из {max_attempts}...")

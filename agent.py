@@ -15,25 +15,22 @@ from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langfuse.callback import CallbackHandler
 import uuid
-from config.db import db_pool, fastembed_executor
+from config.db import fastembed_executor
 
 from agent_graph import app
 from state import AgentState
 from langfuse.decorators import observe, langfuse_context
 from config.db import async_qdrant_client
+from config.db_manager import pool_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. КОД ПРИ ЗАПУСКЕ СЕРВЕРА
-    print("⏳ [LIFESPAN]: Асинхронно открываем пул соединений с PostgreSQL...")
-    await db_pool.open()
-    print("✅ [LIFESPAN]: Пул PostgreSQL готов к работе.")
     
     yield  # В этой точке сервер FastAPI стартует и начинает слушать порт 8000
     
     # 2. КОД ПРИ ВЫКЛЮЧЕНИИ СЕРВЕРА
     print("⏳ [LIFESPAN]: Закрываем пулы соединений и фоновых потоков...")
-    await db_pool.close()
+    await pool_manager.close_all_pools()
 
     await async_qdrant_client.close() 
     print("✅ [LIFESPAN]: Сессия Qdrant успешно закрыта.")
@@ -64,7 +61,7 @@ app_fastapi.add_middleware(
     allow_headers=["*"],
 )
 
-async def run_agent_stream(user_message: str, thread_id: str) -> AsyncGenerator[str, None]:
+async def run_agent_stream(user_message: str, thread_id: str, col_name: str, db_name: str) -> AsyncGenerator[str, None]:
     """Асинхронный генератор, который запускает граф и стримит шаги работы агентов на фронтенд."""
     langfuse_callback = CallbackHandler()
     session_thread_id = thread_id or f"production_thread_{uuid.uuid4().hex[:8]}"
@@ -85,7 +82,9 @@ async def run_agent_stream(user_message: str, thread_id: str) -> AsyncGenerator[
         "messages": [HumanMessage(content=user_message)],
         "context": "",
          "sql_result": "",
-         "sql_query": ""
+         "sql_query": "",
+         "col_name": col_name,
+         "db_name": db_name
     }
     
     try:
@@ -138,15 +137,16 @@ async def run_agent_stream(user_message: str, thread_id: str) -> AsyncGenerator[
 @app_fastapi.post("/api/chat")
 async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks):
     """Эндпоинт для отправки сообщений агенту со стримингом процесса размышлений."""
-
+    col_name = "vasya"
+    db_name  = "vasya"
     return StreamingResponse(
-        run_agent_stream(request.message, request.thread_id),
+        run_agent_stream(request.message, request.thread_id, col_name=col_name, db_name=db_name),
         media_type="text/event-stream"
     )
 
 @app_fastapi.get("/")
 def read_root():
-    return {"status": "ok", "message": "FastAPI works 13!"}
+    return {"status": "ok", "message": "FastAPI works 787878!"}
 
 
 if __name__ == "__main__":
@@ -155,18 +155,4 @@ if __name__ == "__main__":
     uvicorn.run("agent:app_fastapi", host="0.0.0.0", port=8000, reload=True)
 
 
-#
-"""
-Тест:
 
-curl -X POST http://localhost:8000/api/chat \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Покажи email пользователей с максимальными тратами", "thread_id": "test_web_session"}'
-
-     
-curl -X POST http://localhost:8000/api/chat \
-     -H "Content-Type: application/json" \
-     -d '{"message": "А сколько заказов сделал самый активный пользователь?", "thread_id": "test_web_session"}'
-
-   
-"""

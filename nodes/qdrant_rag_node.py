@@ -1,15 +1,11 @@
 import onnxruntime as ort
 from typing import Dict, Any, List, Tuple
-from qdrant_client import AsyncQdrantClient
 from langgraph.types import Command
 from fastembed import SparseTextEmbedding, TextEmbedding
-from langchain_core.messages import AIMessage
-from qdrant_client import QdrantClient
 from qdrant_client.models import Prefetch, FusionQuery, Fusion, SparseVector
 from state import AgentState
 from config.common_config import settings
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from config.db import fastembed_executor, async_qdrant_client
 
 # 1. Создаем настройки для ONNX Runtime
@@ -83,27 +79,28 @@ async def qdrant_rag_node(state: AgentState) -> Command:
         
     # Извлекаем текст последнего вопроса пользователя
     user_text: str = str(state["messages"][-1].content)
+    col_name: str = state['col_name']
     
     # 1. Генерируем плотный и разреженный векторы локально через FastEmbed
     query_dense, query_sparse = await generate_rag_vectors(user_text)
     
-    # 2. Выполняем гибридный поиск (Dense + Sparse через RRF) в вашей коллекции db_metadata
+    # 2. Выполняем гибридный поиск (Dense + Sparse через RRF) в вашей коллекции
     search_result = await async_qdrant_client.query_points(
     
-        collection_name="db_metadata",
+        collection_name=col_name,
         prefetch=[
-            Prefetch(query=query_dense, using="dense", limit=3),
+            Prefetch(query=query_dense, using="dense", limit=5),
             Prefetch(
                 query=SparseVector(
                     indices=query_sparse[0].indices.tolist(),
                     values=query_sparse[0].values.tolist()
                 ),
                 using="sparse", 
-                limit=3
+                limit=5
             )
         ],
         query=FusionQuery(fusion=Fusion.RRF),
-        limit=3,
+        limit=5,
         with_payload=True
     )
     

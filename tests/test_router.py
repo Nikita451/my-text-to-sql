@@ -23,7 +23,9 @@ def test_router_decisions(user_message, expected_agent):
         "messages": [HumanMessage(content=user_message)],
         "context": "",
         "sql_result": "",
-        "sql_query": ""
+        "sql_query": "",
+        "db_name": "mydb",
+        "col_name": "db_metadata",
     }
     
     # 2. Вызываем наш узел

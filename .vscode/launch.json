@@ -10,6 +10,18 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}"
             }
+        },
+        {
+            "name": "Python: FastAPI (uv)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "agent:app_fastapi"
+            ],
+            "jinja": true,
+            "justMyCode": true
         }
     ]
 }

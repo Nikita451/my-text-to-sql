@@ -1,5 +1,4 @@
 import os
-import json
 from typing import List, Dict, Any, Literal
 from pydantic import BaseModel, Field, SecretStr
 from langchain_core.messages import HumanMessage
@@ -126,7 +125,9 @@ def run_evaluations() -> None:
             "messages": [HumanMessage(content=test["question"])],
             "context": "",
             "sql_result": None,
-            "sql_query": ""
+            "sql_query": "",
+            "db_name": "mydb",
+            "col_name": "db_metadata",
         }
         
         try:
