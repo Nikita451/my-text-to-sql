@@ -1,17 +1,15 @@
-from typing import Dict, Any, List, cast, LiteralString
-
-from psycopg_pool import AsyncConnectionPool
+import logging
+from typing import cast, LiteralString
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_openrouter import ChatOpenRouter
-import psycopg
-from psycopg import sql
-from psycopg import AsyncConnection
 from pydantic import BaseModel, Field, SecretStr
 from state import AgentState
 import os
 from config.common_config import settings
 from langgraph.types import Command
 from config.db_manager import pool_manager
+
+logger = logging.getLogger(__name__)
 
 CONN_STR = f"host={os.getenv('PG_HOST', 'localhost')} port={os.getenv('PG_PORT', '5432')} dbname={os.getenv('PG_DB', 'mydb')} user={os.getenv('PG_USER', 'myuser')} password={os.getenv('PG_PASSWORD', 'mypassword')}"
 
@@ -34,25 +32,25 @@ class GeneratedSQL(BaseModel):
     reasoning: str = Field(description="Логика рассуждения")
     sql_query: str = Field(description="Чистый SQL-запрос")
 
-llm = ChatOpenRouter(
+base_llm = ChatOpenRouter(
     model=settings.model, 
     api_key=SecretStr(settings.openrouter_api_key),
     temperature=0
-)
-sql_coder_llm = llm.with_structured_output(GeneratedSQL)
+).with_structured_output(GeneratedSQL)
 
-# sql_coder_llm = sql_coder_llm_u.with_retry(
-#     stop_after_attempt=3,
-#     wait_exponential_jitter=True # делает паузы между попытками чуть-чуть случайными
-# )
+sql_coder_llm = base_llm.with_retry(
+    stop_after_attempt=3,
+    retry_if_exception_type=(Exception, ValueError),
+    wait_exponential_jitter=True # делает паузы между попытками чуть-чуть случайными
+)
 
 async def sql_coder_node(state: AgentState) -> Command:
     """Узел-Программист: пишет SQL, выполняет в Postgres и сам чинит баги (до 3 попыток)."""
-    print("💻 [АГЕНТ-ПРОГРАММИСТ]: Начинаю генерацию и выполнение SQL-запроса...")
+    logger.info("💻 [АГЕНТ-ПРОГРАММИСТ]: Начинаю генерацию и выполнение SQL-запроса...")
     
     db_context = state.get("context", "")
     if not db_context:
-        print("⚠️ [АГЕНТ-ПРОГРАММИСТ]: Контекст схем пуст! Безопасно возвращаю граф в Роутер.")
+        logger.warning("⚠️ [АГЕНТ-ПРОГРАММИСТ]: Контекст схем пуст! Безопасно возвращаю граф в Роутер.")
         return Command(goto="router")
     
     user_question = ""
@@ -63,7 +61,7 @@ async def sql_coder_node(state: AgentState) -> Command:
                 user_question = str(msg.content)
                 break
     if not user_question:
-        print("⚠️ [АГЕНТ-ПРОГРАММИСТ]: Не удалось найти вопрос пользователя в истории!")
+        logger.warning("⚠️ [АГЕНТ-ПРОГРАММИСТ]: Не удалось найти вопрос пользователя в истории!")
         return Command(goto="router")
     
     # Инициализируем историю сообщений для внутренней работы программиста
@@ -78,12 +76,12 @@ async def sql_coder_node(state: AgentState) -> Command:
     db_pool = await pool_manager.get_pool(db_name)
     
     for attempt in range(1, max_attempts + 1):
-        print(f"🤖 [АГЕНТ-ПРОГРАММИСТ]: Попытка {attempt} из {max_attempts}...")
+        logger.info(f"🤖 [АГЕНТ-ПРОГРАММИСТ]: Попытка {attempt} из {max_attempts}...")
         
         # 1. Заставляем модель сгенерировать SQL по строгой схеме Pydantic
         response: GeneratedSQL = await sql_coder_llm.ainvoke(coder_messages) # type: ignore
         if response is None:
-            print(f"⚠️ Модель вернула None или не смогла распарсить JSON на попытке {attempt}.")
+            logger.warning(f"⚠️ Модель вернула None или не смогла распарсить JSON на попытке {attempt}.")
             coder_messages.append(HumanMessage(
                 content=f"⚠️ Ошибка: Твой прошлый ответ не соответствовал JSON-схеме Pydantic или был пуст. Пожалуйста, строго следуй формату и не пиши лишнего текста."
             ))
@@ -91,13 +89,10 @@ async def sql_coder_node(state: AgentState) -> Command:
 
         last_generated_query = response.sql_query
         
-        print(f"📝 [АГЕНТ-ПРОГРАММИСТ]: Сгенерирован SQL: {last_generated_query}")
+        logger.info(f"📝 [АГЕНТ-ПРОГРАММИСТ]: Сгенерирован SQL: {last_generated_query}")
         
         # 2. Пытаемся выполнить его в PostgreSQL
         try:
-            # with psycopg.connect(CONN_STR) as conn:
-            #   with conn.cursor() as cur:
-            # async with await AsyncConnection.connect(CONN_STR) as conn:
             async with db_pool.connection() as conn:  
                 async with conn.cursor() as cur:
                     safe_query = cast(LiteralString, last_generated_query)
@@ -108,7 +103,7 @@ async def sql_coder_node(state: AgentState) -> Command:
                     
                     # Если всё выполнилось успешно, собираем результат в строку и выходим из цикла!
                     sql_result_str = f"Колонки: {colnames}\nСтроки:\n" + "\n".join([str(row) for row in rows])
-                    print("✅ [АГЕНТ-ПРОГРАММИСТ]: SQL-запрос успешно выполнен!")
+                    logger.info("✅ [АГЕНТ-ПРОГРАММИСТ]: SQL-запрос успешно выполнен!")
                     
                     # Возвращаем результат. Роутер увидит это сообщение и поймет, что данные собраны
                     return Command(
@@ -120,7 +115,7 @@ async def sql_coder_node(state: AgentState) -> Command:
                     )
                     
         except Exception as pg_error:
-            print(f"❌ [АГЕНТ-ПРОГРАММИСТ]: Postgres вернул ошибку: {pg_error}")
+            logger.error(f"❌ [АГЕНТ-ПРОГРАММИСТ]: Postgres вернул ошибку: {pg_error}")
             
             # Если попытки ещё есть, дописываем ошибку в локальный контекст программиста и идем на новый круг!
             if attempt < max_attempts:
@@ -130,10 +125,10 @@ async def sql_coder_node(state: AgentState) -> Command:
                 ))
             else:
                 # Если все 3 попытки исчерпаны, сдаемся и возвращаем лог ошибки Роутеру
-                print("🛑 [АГЕНТ-ПРОГРАММИСТ]: Не удалось исправить SQL за 3 попытки.")
-                print(f"Ошибка выполнения SQL после {max_attempts} попыток. Лог: {pg_error}")
+                logger.error("🛑 [АГЕНТ-ПРОГРАММИСТ]: Не удалось исправить SQL за 3 попытки.")
+                logger.error(f"Ошибка выполнения SQL после {max_attempts} попыток. Лог: {pg_error}")
                 return Command(goto="router")
     
-    print(f"Неизвестная ошибка в узле программиста.")
+    logger.error(f"Неизвестная ошибка в узле программиста.")
     return Command(goto="router")
 

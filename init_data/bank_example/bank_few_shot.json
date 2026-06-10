@@ -1,0 +1,30 @@
+[
+  {
+    "text": "Вопрос: Найди клиентов со статусом VIP и их общий баланс по всем расчетным счетам. SQL: SELECT c.customer_id, c.first_name, c.last_name, SUM(a.balance) AS total_balance FROM customers c JOIN accounts a ON c.customer_id = a.customer_id WHERE c.status = 'vip' AND a.account_type = 'checking' GROUP BY c.customer_id, c.first_name, c.last_name;",
+    "metadata": {
+      "table_name": "customers,accounts",
+      "type": "example_query"
+    }
+  },
+  {
+    "text": "Вопрос: Какая сумма трат была в категории Супермаркеты по картам платежной системы Мир за всё время? SQL: SELECT SUM(t.amount) AS total_spent FROM transactions t JOIN accounts a ON t.account_id = a.account_id JOIN cards c ON a.account_id = c.account_id WHERE t.category = 'Супермаркеты' AND c.payment_system = 'Мир' AND t.transaction_type = 'payment';",
+    "metadata": {
+      "table_name": "transactions,cards,accounts",
+      "type": "example_query"
+    }
+  },
+  {
+    "text": "Вопрос: Выведи топ-3 филиала по количеству открытых счетов. SQL: SELECT b.branch_name, COUNT(a.account_id) AS accounts_count FROM branches b JOIN accounts a ON b.branch_id = a.branch_id GROUP BY b.branch_id, b.branch_name ORDER BY accounts_count DESC LIMIT 3;",
+    "metadata": {
+      "table_name": "branches,accounts",
+      "type": "example_query"
+    }
+  },
+  {
+    "text": "Вопрос: Покажи клиентов, у которых есть просроченные кредиты (статус overdue), и сумму их долга. SQL: SELECT c.first_name, c.last_name, l.remaining_amount FROM customers c JOIN loans l ON c.customer_id = l.customer_id WHERE l.status = 'overdue';",
+    "metadata": {
+      "table_name": "customers,loans",
+      "type": "example_query"
+    }
+  }
+]

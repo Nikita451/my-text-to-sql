@@ -25,7 +25,7 @@ def setup_logging():
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
 
-    # Применяем настройки к корневому логгеру
+    # Применяем настройки к корневому (!) логгеру
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
     

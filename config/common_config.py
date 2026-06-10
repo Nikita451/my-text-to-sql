@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     lf_pg_user: str = Field(default=...)
     lf_pg_password: str = Field(default=...)
     lf_pg_db: str = Field(default=...)
+    system_db_name: str = Field(default=...)
+    origin: str = Field(default=...)
 
     # Настройки для Pydantic: указываем файл окружения
     model_config = SettingsConfigDict(env_file=".env", 

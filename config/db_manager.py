@@ -1,8 +1,11 @@
+import logging
 import os
 from typing import Dict
 from psycopg import AsyncConnection
 from psycopg.rows import TupleRow
 from psycopg_pool import AsyncConnectionPool
+
+logger = logging.getLogger(__name__)
 
 class DynamicPoolManager:
     def __init__(self):
@@ -25,7 +28,7 @@ class DynamicPoolManager:
         if db_name not in self._pools:
             conn_info = self._get_conn_info(db_name)
             
-            print(f"🧬 Создаю новый пул подключений для базы данных: '{db_name}'")
+            logger.info("🧬 Создаю новый пул подключений для базы данных: '%s' ", db_name)
             pool: AsyncConnectionPool[AsyncConnection[TupleRow]] = AsyncConnectionPool(
                 conninfo=conn_info,
                 min_size=2,
@@ -40,9 +43,9 @@ class DynamicPoolManager:
 
     async def close_all_pools(self):
         """Закрывает все пулы при остановке приложения (FastAPI Lifespan)"""
-        print("🛑 Закрытие всех пулов подключений...")
+        logger.info("🛑 Закрытие всех пулов подключений...")
         for db_name, pool in self._pools.items():
-            print(f"Закрываю пул для '{db_name}'...")
+            logger.info("Закрываю пул для '%s'...", db_name)
             await pool.close()
         self._pools.clear()
 

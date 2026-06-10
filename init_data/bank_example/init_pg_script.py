@@ -1,10 +1,10 @@
 import os
 import psycopg
+from config.db import BASE_CONN_STR
 from dotenv import load_dotenv
 from psycopg import sql
 
 load_dotenv()
-BASE_CONN_STR = f"host={os.getenv('PG_HOST')} port={os.getenv('PG_PORT')} dbname=postgres user={os.getenv('PG_USER')} password={os.getenv('PG_PASSWORD')}"
 db_name = "vasya"
 
 def create_database_if_not_exists(TARGET_DB_NAME: str):

@@ -1,7 +1,7 @@
+import logging
 from typing import Any, Dict, Literal
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from psycopg import logger
 from state import AgentState
 from config.common_config import settings
 from pydantic import BaseModel, Field
@@ -31,19 +31,28 @@ ROUTER_SYSTEM_PROMPT = """Вы — главный диспетчер анали�
 Возвращайте ТОЛЬКО структурированный выбор.
 """
 
+logger = logging.getLogger(__name__)
+
 # Инициализируем модель роутера (строго temperature=0 для точной классификации)
-router_llm = ChatOpenRouter(
+base_llm = ChatOpenRouter(
     model=settings.model, 
     api_key=SecretStr(settings.openrouter_api_key),
     temperature=0
 ).with_structured_output(RouterDecision)
 
+router_llm = base_llm.with_retry(
+    stop_after_attempt=3,
+    # Указываем список ошибок. LangChain сам перехватит и сетевые сбои, 
+    # и наш ручной ValueError, если модель вернет пустой None.
+    retry_if_exception_type=(Exception, ValueError),
+    wait_exponential_jitter=True # делает паузы между попытками чуть-чуть случайными
+)
 
 async def router_node(state: AgentState) -> Command:
     """Узел-диспетчер: принимает решение на основе ИИ или жесткой Python-логики."""
 
     if state.get("sql_result"):
-        print("🧠 [РОУТЕР (Python)]: Данные из Postgres уже в буфере. Направляю к: general_responder")
+        logger.info("🧠 [РОУТЕР (Python)]: Данные из Postgres уже в буфере. Направляю к: general_responder")
         return Command(goto="general_responder")
     
     messages = state["messages"]
@@ -60,7 +69,13 @@ async def router_node(state: AgentState) -> Command:
 
     prompt = [SystemMessage(content=system_content)] + messages
     decision: RouterDecision = await router_llm.ainvoke(prompt) # type: ignore
+
+    if decision is None:
+        logger.error("OpenRouter вернул пустой ответ (None) в узле router.")
+        # Выбрасываем ValueError — это заставит сработать расширенный retry, 
+        # либо ошибка красиво уйдет в errors.py
+        raise ValueError("ИИ-модель вернула пустой ответ. Требуется повторная попытка.")
     
-    print(f"🧠 [РОУТЕР]: {decision.reasoning} ➡️ Направляю к: {decision.next_agent}")
+    logger.info("🧠 [РОУТЕР]: %s ➡️ Направляю к: %s", decision.reasoning, decision.next_agent)
     return Command(goto=decision.next_agent)
 

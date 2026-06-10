@@ -1,3 +1,4 @@
+import asyncio
 from typing import List, Dict, Any
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, SparseVector, VectorParams, SparseVectorParams, PointStruct, NamedVector, NamedSparseVector
@@ -5,7 +6,9 @@ from fastembed import TextEmbedding, SparseTextEmbedding
 import os
 import psycopg
 from dotenv import load_dotenv
-from psycopg import sql
+from psycopg import AsyncConnection, sql
+
+from utils.pg_db import fetch_postgres_schemas
 
 load_dotenv()
 db_name = "vasya"
@@ -38,42 +41,15 @@ def create_hybrid_collection(COLLECTION_NAME: str) -> None:
     print(f"Коллекция '{COLLECTION_NAME}' создана с именами 'dense' и 'sparse'.")
 
 
-def get_schemas_from_postgres(db_name: str) -> List[Dict[str, Any]]:
+async def get_schemas_from_postgres(db_name: str) -> List[Dict[str, Any]]:
     """Автоматически вытаскивает структуру таблиц, колонок и комментарии из Postgres"""
     print("Извлечение метаданных из Postgres...")
     
     POSTGRES_CONN_STR = f"host={os.getenv('PG_HOST')} port={os.getenv('PG_PORT')} dbname={db_name} user={os.getenv('PG_USER')} password={os.getenv('PG_PASSWORD')}"
-    # Этот SQL-запрос собирает имя таблицы, её комментарий, а также список колонок с типами
-    query = """
-    SELECT 
-        t.table_name,
-        obj_description(pgc.oid, 'pg_class') AS table_comment,
-        string_agg(c.column_name || ' (' || c.data_type || ')', ', ' ORDER BY c.ordinal_position) AS columns
-    FROM information_schema.tables t
-    JOIN pg_catalog.pg_class pgc ON t.table_name = pgc.relname
-    JOIN information_schema.columns c ON t.table_name = c.table_name
-    WHERE t.table_schema = 'public' 
-      AND t.table_type = 'BASE TABLE'
-    GROUP BY t.table_name, pgc.oid;
-    """
     
     documents = []
-    with psycopg.connect(POSTGRES_CONN_STR) as conn:
-        with conn.cursor() as cur:
-            cur.execute(query)
-            rows = cur.fetchall()
-            
-            for row in rows:
-                table_name, table_comment, columns = row
-                comment_str = f" Описание: {table_comment}." if table_comment else ""
-                
-                # Формируем текст для векторного поиска
-                text = f"Таблица {table_name}.{comment_str} Содержит поля: {columns}."
-                
-                documents.append({
-                    "text": text,
-                    "metadata": {"table_name": table_name, "type": "schema"}
-                })
+    async with await AsyncConnection.connect(POSTGRES_CONN_STR) as conn:
+        documents = await fetch_postgres_schemas(conn)
     return documents
 
 
@@ -113,12 +89,12 @@ def get_few_shot_examples() -> List[Dict[str, Any]]:
 
 
 
-def main(db_col_name: str):
+async def main(db_col_name: str):
     # 0 Создаем коллекцию
     create_hybrid_collection(db_col_name)
 
     # 1. Собираем документы (Схемы из БД + Написанные Few-Shot примеры)
-    schema_docs = get_schemas_from_postgres(db_col_name)
+    schema_docs = await  get_schemas_from_postgres(db_col_name)
     example_docs = get_few_shot_examples()
     all_documents = schema_docs + example_docs
 
@@ -161,5 +137,6 @@ def main(db_col_name: str):
 
 
 if __name__ == "__main__":
-    main(COLLECTION_DB_NAME)
+    # main(COLLECTION_DB_NAME)
+    asyncio.run(main(COLLECTION_DB_NAME))
 

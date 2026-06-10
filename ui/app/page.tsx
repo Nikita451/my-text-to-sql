@@ -1,167 +1,80 @@
-'use client';
+import Link from 'next/link';
+import { Plus, Layers } from 'lucide-react';
+import WorkspaceList from './WorkSpaceList';
 
-import { useState, useRef, useEffect } from 'react';
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
+interface Workspace {
+  id: string;
+  name: string;
+  description: string | null;
+  internal_db_name: string;
+  internal_col_name: string;
+  created_at: string;
 }
 
-export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
-  const [status, setStatus] = useState<string>(''); // Сюда пишем текущего агента
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+async function getWorkspaces(): Promise<Workspace[]> {
+  // cache: 'no-store' отключает агрессивное кэширование Next.js,
+  // чтобы при добавлении новой БД список на главной обновлялся мгновенно
+  // http://localhost:8000/api/onboard/workspaces
+  const res = await fetch('http://localhost:8000/api/onboard/workspaces', {
+    cache: 'no-store', 
+  });
 
-  // Автопрокрутка чата вниз при новых сообщениях
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, status]);
+  if (!res.ok) {
+    throw new Error('Не удалось загрузить список воркспейсов на сервере');
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  return res.json();
+}
 
-    const userMessage = input.trim();
-    setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
-    setIsLoading(true);
-    setStatus('Инициализация агентов...');
-
-    try {
-      // Делаем POST запрос к нашему FastAPI бэкенду
-      const response = await fetch('http://localhost:8000/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage,
-          thread_id: 'nextjs_web_session', // Общий id сессии для памяти диалога
-        }),
-      });
-
-      if (!response.body) throw new Error('Поток данных пуст');
-
-      // Начинаем построчно читать асинхронный SSE-поток
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        // Декодируем прилетевший чанк текста и добавляем в буфер
-        buffer += decoder.decode(value, { stream: true });
-        
-        // SSE строки всегда разделяются двумя переносами строк (\n\n)
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || ''; // Оставляем незавершенную строку в буфере
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const jsonStr = line.replace('data: ', '').trim();
-            if (!jsonStr) continue;
-
-            try {
-              const data = JSON.parse(jsonStr);
-
-              if (data.type === 'status') {
-                // Изменяем статус над строкой ввода (какой агент сейчас думает)
-                setStatus(data.message);
-              } else if (data.type === 'final_answer') {
-                // Если прилетел финальный ответ — выключаем крутилку и пушим в чат
-                setMessages((prev) => [
-                  ...prev,
-                  { role: 'assistant', content: data.content },
-                ]);
-                setStatus('');
-                setIsLoading(false);
-              } else if (data.type === 'error') {
-                setStatus(`❌ Ошибка: ${data.message}`);
-                setIsLoading(false);
-              }
-            } catch (err) {
-              console.error('Ошибка парсинга SSE строки:', err);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Критическая ошибка сети:', error);
-      setStatus('💥 Ошибка подключения к серверу бэкенда.');
-      setIsLoading(false);
-    }
-  };
+export default async function WorkspacesDashboard() {
+  const workspaces = await getWorkspaces();
 
   return (
-    <main className="flex flex-col h-screen bg-slate-50 text-slate-800">
-      {/* Шапка */}
-      <header className="bg-white border-b border-slate-200 p-4 shadow-sm">
-        <h1 className="text-xl font-bold text-indigo-600 flex items-center gap-2">
-          📊 AI SQL Analyst Dashboard
-        </h1>
-        <p className="text-xs text-slate-500">
-          Мультиагентная система аналитики данных (LangGraph + Qdrant + Postgres)
-        </p>
+    <div className="min-h-screen bg-[#0B0F19] text-slate-100 font-sans antialiased selection:bg-blue-500/30">
+      
+      {/* Верхняя навигация */}
+      <header className="border-b border-slate-800/60 bg-[#070A13]/50 backdrop-blur-md sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
+              <Layers className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+              SQL.ai
+            </span>
+          </div>
+          <div className="text-sm text-slate-500 flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Сервер активен
+          </div>
+        </div>
       </header>
 
-      {/* Окно сообщений */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 max-w-4xl w-full mx-auto">
-        {messages.length === 0 && (
-          <div className="text-center py-20 text-slate-400 space-y-2">
-            <p className="text-lg font-medium">👋 Добро пожаловать в ИИ-аналитик!</p>
-            <p className="text-sm">Задайте любой аналитический вопрос по вашей базе данных.</p>
+      {/* Основной блок */}
+      <main className="max-w-6xl mx-auto px-4 py-12">
+        
+        {/* Заголовок и кнопка */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white mb-1">
+              Рабочие пространства
+            </h1>
+            <p className="text-sm text-slate-400">
+              Выберите проект, чтобы начать диалог со своими данными через ИИ-ассистента.
+            </p>
           </div>
-        )}
-
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          
+          <Link
+            href="/create"
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-blue-600/10 flex items-center justify-center gap-2 whitespace-nowrap"
           >
-            <div
-              className={`max-w-2xl p-4 rounded-2xl shadow-sm whitespace-pre-wrap ${
-                msg.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-none'
-                  : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
-              }`}
-            >
-              <p className="text-sm">{msg.content}</p>
-            </div>
-          </div>
-        ))}
+            <Plus className="w-4 h-4" />
+            <span>Создать проект</span>
+          </Link>
+        </div>
 
-        {/* Логгер статуса размышлений агентов */}
-        {isLoading && (
-          <div className="flex justify-start items-center gap-3 bg-indigo-50 border border-indigo-100 p-3 rounded-xl max-w-xl animate-pulse">
-            <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-xs font-medium text-indigo-700">{status}</p>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Форма отправки */}
-      <footer className="bg-white border-t border-slate-200 p-4 shadow-lg">
-        <form onSubmit={handleSubmit} className="max-w-4xl w-full mx-auto flex gap-3">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Например: Сколько заказов сделал самый активный пользователь?"
-            disabled={isLoading}
-            className="flex-1 p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-3 rounded-xl transition disabled:bg-slate-300 text-sm"
-          >
-            Отправить
-          </button>
-        </form>
-      </footer>
-    </main>
+        <WorkspaceList initialWorkspaces={workspaces} />
+      </main>
+    </div>
   );
 }
