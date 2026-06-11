@@ -4,14 +4,11 @@ from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_openrouter import ChatOpenRouter
 from pydantic import BaseModel, Field, SecretStr
 from state import AgentState
-import os
 from config.common_config import settings
 from langgraph.types import Command
 from config.db_manager import pool_manager
 
 logger = logging.getLogger(__name__)
-
-CONN_STR = f"host={os.getenv('PG_HOST', 'localhost')} port={os.getenv('PG_PORT', '5432')} dbname={os.getenv('PG_DB', 'mydb')} user={os.getenv('PG_USER', 'myuser')} password={os.getenv('PG_PASSWORD', 'mypassword')}"
 
 SQL_CODER_SYSTEM_PROMPT = """Вы — изолированный ИИ-модуль, отвечающий за написание и исправление SQL-запросов для PostgreSQL.
 

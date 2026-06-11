@@ -1,9 +1,9 @@
 import logging
-import os
 from typing import Dict
 from psycopg import AsyncConnection
 from psycopg.rows import TupleRow
 from psycopg_pool import AsyncConnectionPool
+from config.common_config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +14,10 @@ class DynamicPoolManager:
         self._pools: Dict[str, AsyncConnectionPool[AsyncConnection[TupleRow]]] = {}
         
         # Общие базовые параметры подключения (без dbname)
-        self.host = os.getenv('PG_HOST', 'localhost')
-        self.port = os.getenv('PG_PORT', '5432')
-        self.user = os.getenv('PG_USER', 'myuser')
-        self.password = os.getenv('PG_PASSWORD', 'mypassword')
+        self.host = settings.pg_host
+        self.port = settings.pg_port
+        self.user = settings.pg_user
+        self.password = settings.pg_password
 
     def _get_conn_info(self, db_name: str) -> str:
         """Формирует строку подключения для конкретной БД"""

@@ -3,12 +3,11 @@ from typing import AsyncGenerator
 
 from psycopg_pool import AsyncConnectionPool
 from concurrent.futures import ThreadPoolExecutor
-import os
 from config.common_config import settings
 
 from qdrant_client import AsyncQdrantClient
 
-BASE_CONN_STR = f"host={os.getenv('PG_HOST')} port={os.getenv('PG_PORT')} dbname=postgres user={os.getenv('PG_USER')} password={os.getenv('PG_PASSWORD')}"
+BASE_CONN_STR = f"host={settings.pg_host} port={settings.pg_port} dbname=postgres user={settings.pg_user} password={settings.pg_password}"
 
 # 1. Создаем кастомный пул потоков операционной системы при старте приложения
 # max_workers=4 означает, что внутри ОС будет создано ровно 4 "рабочих" потока.

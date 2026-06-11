@@ -7,22 +7,30 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     # default=...  - Обязательное значение без нач значения. 
     openrouter_api_key: str = Field(default=...)
-
-    qdrant_url: str = Field(default=...)
-    pg_db: str = Field(default=...)
-    pg_user: str = Field(default=...)
-    pg_password: str = Field(default=...)
-    pg_host: str = Field(default=...)
-    pg_port: int = Field(default=...)
-    model: str = Field(default=...)
     langfuse_public_key: str = Field(default=...)
     langfuse_secret_key: str = Field(default=...)
-    langfuse_base_url: str = Field(default=...)
-    lf_pg_user: str = Field(default=...)
+
+    pg_password: str = Field(default=...)
     lf_pg_password: str = Field(default=...)
+
+    pg_db: str = Field(default=...)
     lf_pg_db: str = Field(default=...)
     system_db_name: str = Field(default=...)
-    origin: str = Field(default=...)
+
+
+    # некритичные данные с дефолтным значением.
+    # Инфраструктура
+    pg_host: str = Field(default="localhost")
+    pg_port: int = Field(default=5432)
+    pg_user: str = Field(default="myuser")
+    lf_pg_user: str = Field(default="langfuse")
+
+    qdrant_url: str = Field(default="http://localhost:6333")
+    langfuse_base_url: str = Field(default="http://localhost:3000")
+    
+    
+    model: str = Field(default="deepseek/deepseek-chat")
+    origin: str = Field(default="*")
 
     # Настройки для Pydantic: указываем файл окружения
     model_config = SettingsConfigDict(env_file=".env", 

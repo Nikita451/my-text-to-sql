@@ -1,0 +1,14 @@
+[
+  {
+      "text": "Таблица users (пользователи). Содержит: id (INT, PK), email (VARCHAR), created_at (TIMESTAMP). Используется для поиска информации о регистрации клиентов.",
+      "metadata": {"table_name": "users", "type": "schema"}
+  },
+  {
+      "text": "Таблица orders (заказы). Содержит: id (INT), user_id (FK к users.id), amount (DECIMAL - сумма заказа), status (VARCHAR). Статусы: 'completed' (завершен), 'pending' (ожидает оплаты), 'canceled' (отменен).",
+      "metadata": {"table_name": "orders", "type": "schema"}
+  },
+  {
+      "text": "Пример SQL для расчета выручки по клиентам: SELECT u.email, SUM(o.amount) FROM users u JOIN orders o ON u.id = o.user_id WHERE o.status = 'completed' GROUP BY u.email;",
+      "metadata": {"table_name": "orders", "type": "example_query"}
+  }
+]
