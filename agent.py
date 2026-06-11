@@ -6,6 +6,7 @@ import logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
+import sys
 from config.common_config import settings
 from contextlib import asynccontextmanager
 from core.errors_handler import setup_exception_handlers
@@ -17,7 +18,27 @@ from utils.bootstrap_system import bootstrap_system
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config.db_manager import pool_manager
+import importlib.util
 
+# Профессиональный патч совместимости Langfuse v2 и LangChain 1.x
+# При запуске в docker пакет langchain через раз выкидывается из общей сбор
+try:
+    import langchain_core.callbacks
+    
+    # 1. Обманываем физическую проверку папки на диске (find_spec)
+    orig_find_spec = importlib.util.find_spec
+    def patched_find_spec(name, *args, **kwargs):
+        if name == "langchain":
+            # Возвращаем спецификацию живого ядра core, имитируя наличие langchain
+            return orig_find_spec("langchain_core", *args, **kwargs)
+        return orig_find_spec(name, *args, **kwargs)
+    importlib.util.find_spec = patched_find_spec
+
+    # 2. Перенаправляем вызовы модулей в оперативной памяти
+    sys.modules["langchain.callbacks"] = langchain_core.callbacks
+    sys.modules["langchain.callbacks.base"] = langchain_core.callbacks
+except Exception as e:
+    logging.warning(f"Не удалось инициализировать патч совместимости: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

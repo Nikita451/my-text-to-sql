@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Database, FileText, UploadCloud, ChevronLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import {getBaseApiUrl} from '@/utils/api'
 
 export default function CreateWorkspace() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function CreateWorkspace() {
     formData.append('few_shot_file', jsonFile);
 
     try {
-      const res = await fetch('http://localhost:8000/api/onboard', {
+      const res = await fetch(`${getBaseApiUrl()}/api/onboard`, {
         method: 'POST',
         body: formData,
       });

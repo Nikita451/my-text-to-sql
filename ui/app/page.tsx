@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Plus, Layers } from 'lucide-react';
 import WorkspaceList from './WorkSpaceList';
+import {getBaseApiUrl} from '@/utils/api'
 
 interface Workspace {
   id: string;
@@ -14,8 +15,7 @@ interface Workspace {
 async function getWorkspaces(): Promise<Workspace[]> {
   // cache: 'no-store' отключает агрессивное кэширование Next.js,
   // чтобы при добавлении новой БД список на главной обновлялся мгновенно
-  // http://localhost:8000/api/onboard/workspaces
-  const res = await fetch('http://localhost:8000/api/onboard/workspaces', {
+  const res = await fetch(`${getBaseApiUrl()}/api/onboard/workspaces`, {
     cache: 'no-store', 
   });
 

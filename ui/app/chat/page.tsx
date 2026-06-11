@@ -1,6 +1,7 @@
 import { Workspace } from '../types';
 import Link from 'next/link';
 import Chat from './Chat';
+import {getBaseApiUrl} from '@/utils/api';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -14,7 +15,7 @@ interface ChatPageProps {
 
 async function getWorkspaceDetails(workspaceId: string): Promise<Workspace> {
   console.log(workspaceId)
-  const res = await fetch(`http://localhost:8000/api/onboard/workspace/${workspaceId}`, {
+  const res = await fetch(`${getBaseApiUrl()}/api/onboard/workspace/${workspaceId}`, {
     cache: 'no-store'
   });
   if (!res.ok) throw new Error('Воркспейс не найден');

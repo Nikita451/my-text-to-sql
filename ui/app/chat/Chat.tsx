@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Workspace } from '../types';
+import {getBaseApiUrl} from '@/utils/api'
 
 interface Message {
   role: 'user' | 'assistant';
@@ -36,7 +37,7 @@ export default function Home({workspace}: ChatProps) {
 
     try {
       // Делаем POST запрос к нашему FastAPI бэкенду
-      const response = await fetch('http://localhost:8000/api/chat', {
+      const response = await fetch(`${getBaseApiUrl()}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
