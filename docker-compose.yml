@@ -12,6 +12,7 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
+      # Bind Mount (привязка данных в директории на ПК - контроль)
       - ./qdrant_storage:/qdrant/storage:z
 
   postgres:
@@ -44,6 +45,7 @@ services:
     ports:
       - 127.0.0.1:5433:5432
     volumes:
+      # (Named Volume) - изолированное хранилище -  скорость
       - langfuse_postgres_data:/var/lib/postgresql/data
 
   my-text-to-sql-langfuse-web-1:
@@ -63,7 +65,60 @@ services:
     ports:
       - "0.0.0.0:3000:3000"
 
+  agent:
+    image: ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+    container_name: langgraph_agent
+    # рабочую директорию внутри самого Docker-контейнера
+    working_dir: /app
+    ports:
+      - "8000:8000"
+    volumes:
+    # Копируем файлы из корня проекта в раб директорию app контейнера
+      - .:/app
+      - /app/ui # анонимный том - агент не будет тянуть директорию UI и UI/node_modules
+      - /app/postgres_storage      # Скрываем бинарные данные PostgreSQL
+      - /app/qdrant_storage        # Скрываем данные векторной базы Qdrant
+      - /app/.venv
+      # Автономные тома для начального запуска (живут дольше контейнера)
+      - agent_hf_cache:/root/.cache/huggingface
+      - agent_fastembed_cache:/root/.cache/fastembed_cache
+    env_file:
+      - .env
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1  # ← ОТКЛЮЧАЕТ СОЗДАНИЕ __pycache__ ВНУТРИ КОНТЕЙНЕРА, чтобы не перезаписывать локальный
+      - QDRANT_URL=http://qdrant:6333
+      - PG_HOST=postgres
+      # Указываем имя веб-сервиса Langfuse и его внутренний порт 3000
+      - LANGFUSE_BASE_URL=http://my-text-to-sql-langfuse-web-1:3000
+      # Инструктируем библиотеки сохранять файлы строго по этим путям
+      - HF_HOME=/root/.cache/huggingface
+      - FASTEMBED_CACHE_PATH=/root/.cache/fastembed_cache
+    command: sh -c "uv sync && uv run uvicorn agent:app_fastapi --host 0.0.0.0 --port 8000 --reload"
+    depends_on:
+      - postgres
+      - qdrant
+      # Агент ждет запуска веб-интерфейса Langfuse
+      - my-text-to-sql-langfuse-web-1 
+  # --- Next.js UI ---
+  ui:
+    image: node:22-slim
+    container_name: nextjs_ui
+    working_dir: /app
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./ui:/app
+      # Docker полностью проигнорирует локальные node_modules и установит пакеты с нуля.
+      - /app/node_modules
+    environment:
+      - PORT=3001
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - agent
 
-
+# объявления именованных томов (Named Volumes) для дальнейшего использования
 volumes:
   langfuse_postgres_data:
+  agent_hf_cache:
+  agent_fastembed_cache:

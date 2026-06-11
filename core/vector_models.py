@@ -37,11 +37,14 @@ def init_vector_models() -> None:
     session_options.use_per_session_threads = True
     
     # Инициализируем локальные эмбеддинги
+    # Кэш Hugging Face (~/.cache/huggingface)
     _state.dense = TextEmbedding(
         model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
         session_options=session_options
     )
     
+    # Кэш FastEmbed ($TMPDIR/fastembed_cache)
+    # Для удобного монтирования в docker: cp -r "$TMPDIR/fastembed_cache" ~/.cache/
     _state.sparse = SparseTextEmbedding(
         model_name="prithivida/Splade_PP_en_v1",
         session_options=session_options

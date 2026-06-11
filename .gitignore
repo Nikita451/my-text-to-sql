@@ -6,6 +6,7 @@ __pycache__/            # Кэш скомпилированного байт-к�
 .pytest_cache/          # Кэш тестов
 .mypy_cache/            # Кэш статического анализатора типов
 .ruff_cache/            # Кэш линтера Ruff
+docker-compose.override.yml
 
 # === Данные и Локальные БД ===
 *.db                    # Локальные базы SQLite
