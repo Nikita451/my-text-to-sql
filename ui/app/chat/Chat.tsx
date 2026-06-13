@@ -3,11 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Workspace } from '../types';
 import {getBaseApiUrl} from '@/utils/api'
-
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-}
+import { Message } from '@/types/chat';
+import { ChatChart } from '@/components/chat-chart';
 
 interface ChatProps {
   workspace: Workspace;
@@ -31,7 +28,7 @@ export default function Home({workspace}: ChatProps) {
 
     const userMessage = input.trim();
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    setMessages((prev) => [...prev, { role: 'user', content: userMessage, chart: null }]);
     setIsLoading(true);
     setStatus('Инициализация агентов...');
 
@@ -83,7 +80,7 @@ export default function Home({workspace}: ChatProps) {
                 // Если прилетел финальный ответ — выключаем крутилку и пушим в чат
                 setMessages((prev) => [
                   ...prev,
-                  { role: 'assistant', content: data.content },
+                  { role: 'assistant', content: data.content, chart: data.chart },
                 ]);
                 setStatus('');
                 setIsLoading(false);
@@ -128,9 +125,17 @@ export default function Home({workspace}: ChatProps) {
               }`}
             >
               <p className="text-sm">{msg.content}</p>
+
+              {msg.role === 'assistant' && msg.chart && (
+                <div className="mt-2 w-full">
+                  <ChatChart chartData={msg.chart} />
+                </div>
+              )}
+
             </div>
           </div>
         ))}
+        
 
         {/* Логгер статуса размышлений агентов */}
         {isLoading && (

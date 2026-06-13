@@ -12,7 +12,7 @@
             }
         },
         {
-            "name": "Python: FastAPI (uv)",
+            "name": "Python: FastAPI (pip)",
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",

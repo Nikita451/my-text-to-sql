@@ -128,6 +128,7 @@ def run_evaluations() -> None:
             "sql_query": "",
             "db_name": "mydb",
             "col_name": "db_metadata",
+            "chart": None,
         }
         
         try:

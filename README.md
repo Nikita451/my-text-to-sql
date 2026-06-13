@@ -135,4 +135,8 @@ docker compose down
 Примеры файлов для загрузки, а также вопросы для агента можно найти в директории
 /init_data/simple_example и /init_data/bank_example.
 
+### 5. Демонстрация работы
 
+<p align="center">
+  <img src="assets/agent_demo.png" alt="Демонстрация работы" width="600" />
+</p>

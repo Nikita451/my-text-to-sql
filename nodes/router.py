@@ -15,21 +15,24 @@ class RouterDecision(BaseModel):
         description="Имя следующего агента, которому нужно передать управление"
     )
 
-ROUTER_SYSTEM_PROMPT = """Вы — главный диспетчер аналитической системы. Ваша задача — проанализировать последнее сообщение пользователя и выбрать идеального следующего исполнителя.
+ROUTER_SYSTEM_PROMPT = """Ты — главный диспетчер аналитической системы. Твоя единственная задача — проанализировать последнее сообщение пользователя, оценить текущее состояние данных и выбрать имя следующего исполнителя (ноды).
 
-ТЕКУЩИЙ КОНТЕКСТ ЗНАНИЙ О БАЗЕ ДАННЫХ (схемы таблиц):
+ТЕКУЩЕЕ СОСТОЯНИЕ СИСТЕМЫ:
+- Наличие контекста знаний (схемы таблиц): {has_context}
+- Наличие результата из базы данных (SQL результат): {has_sql_result}
+
+СПРАВОЧНЫЙ КОНТЕКСТ ЗНАНИЙ (СХЕМЫ ТАБЛИЦ ИЗ QDRANT):
 ===
 {context}
 ===
 
-ПРАВИЛА ВЫБОРА (СТРОГИЙ ПРИОРИТЕТ):
-1. Если ТЕКУЩИЙ КОНТЕКСТ ЗНАНИЙ пуст (написано "Контекст пуст"), вы ОБЯЗАНЫ выбрать 'qdrant_rag'. Вы не имеете права отправлять задачу к 'sql_coder', если у него нет схем таблиц!
-2. Если в контексте уже есть схемы таблиц, но для ответа на новый вопрос пользователя нужны новые таблицы, которых нет в контексте — выбирайте 'qdrant_rag'.
-3. Если в контексте уже есть схемы нужных таблиц, и нужно написать или выполнить SQL-запрос к PostgreSQL — выбирайте 'sql_coder'.
-4. Если из базы данных уже вернулся успешный результат (сообщение со строкой "📊 [Данные из БД]"), и нужно просто вежливо ответить пользователю — выбирайте 'general_responder'.
-
-Возвращайте ТОЛЬКО структурированный выбор.
+ПРАВИЛА И ПРИОРИТЕТЫ ДЛЯ ВЫБОРА:
+1. Если Наличие контекста знаний = 'НЕТ' (или написано "Контекст пуст"), ты ОБЯЗАН выбрать 'qdrant_rag'. Без схем таблиц отправлять задачу дальше нельзя!
+2. Если контекст знаний есть, но для ответа на новый вопрос пользователя нужны другие таблицы, которых в контексте сейчас нет — выбирай 'qdrant_rag'.
+3. Если Наличие результата из базы данных = 'ДА' — это значит, что SQL-запрос уже выполнен. Твоя задача завершена, выбирай 'general_responder' для формирования финального ответа.
+4. Во всех остальных случаях, когда схемы нужных таблиц уже есть в контексте и нужно написать или выполнить SQL-запрос к PostgreSQL — выбирай 'sql_coder'.
 """
+
 
 logger = logging.getLogger(__name__)
 
@@ -57,25 +60,54 @@ async def router_node(state: AgentState) -> Command:
     
     messages = state["messages"]
     current_context = state.get("context", "").strip()
+    has_context = "ДА" if (current_context and "Контекст пуст" not in current_context) else "НЕТ"
     # Проверяем, лежат ли уже данные из Postgres в состоянии
     has_sql_data = "Да" if state.get("sql_result") else "Нет"
+
+    # Безопасное экранирование скобок в контексте
+    safe_context = current_context.replace("{", "{{").replace("}", "}}")
     
+    # system_content = ROUTER_SYSTEM_PROMPT.format(
+    #     context=current_context if current_context else "Контекст пуст. Схем таблиц нет."
+    # )
     system_content = ROUTER_SYSTEM_PROMPT.format(
-        context=current_context if current_context else "Контекст пуст. Схем таблиц нет."
+        has_context=has_context,
+        has_sql_result=has_sql_data,
+        context=safe_context
     )
     
     system_content += f"\nДанные из SQL-базы уже получены: {has_sql_data}\n"
     system_content += "Если данные из SQL-базы уже получены (Да), ты ОБЯЗАН выбрать 'general_responder'."
 
     prompt = [SystemMessage(content=system_content)] + messages
-    decision: RouterDecision = await router_llm.ainvoke(prompt) # type: ignore
 
-    if decision is None:
-        logger.error("OpenRouter вернул пустой ответ (None) в узле router.")
-        # Выбрасываем ValueError — это заставит сработать расширенный retry, 
-        # либо ошибка красиво уйдет в errors.py
-        raise ValueError("ИИ-модель вернула пустой ответ. Требуется повторная попытка.")
-    
-    logger.info("🧠 [РОУТЕР]: %s ➡️ Направляю к: %s", decision.reasoning, decision.next_agent)
-    return Command(goto=decision.next_agent)
+    try:
+        decision: RouterDecision = await router_llm.ainvoke(prompt) # type: ignore
+        if decision and getattr(decision, 'next_node', None):
+            logger.info("🧠 [РОУТЕР]: %s ➡️ Направляю к: %s", decision.reasoning, decision.next_agent)
+            return Command(goto=decision.next_agent)
+        raise ValueError("Empty response from LLM")
+    except Exception as e:
+        # 3. ЕСЛИ ИИ СБОИТ: Включаем каскадный спасательный круг на основе State
+        logging.warning(f"⚠️ Роутер сбоил ({str(e)}). Включаю каскадную защиту.")
+        
+        # Сценарий А: Данные из базы данных УЖЕ ЕСТЬ в стейте. 
+        # Ведем напрямую в финальный ответ, чтобы не потерять результат запроса.
+        sql_res = state.get("sql_result")
+        if sql_res is not None and sql_res.strip() != "":
+            logging.info("Резервный путь: [sql_result найден] ➔ Принудительно идем в general_responder")
+            return Command(goto="general_responder")
+            
+        # Сценарий Б: Данных из БД еще нет, но схемы таблиц в контексте уже собраны.
+        # Ведем напрямую в генератор SQL-кода.
+        elif safe_context and safe_context.strip() != "" and "Контекст пуст" not in safe_context:
+            logging.info("Резервный путь: [Схемы таблиц есть] ➔ Принудительно идем в sql_coder")
+            return Command(goto="sql_coder")
+            
+        # Сценарий В: Полный холодный старт, в стейте вообще ничего нет.
+        # Ведем в Qdrant собирать контекст знаний о таблицах.
+        else:
+            logging.info("Резервный путь: [Стейт пуст] ➔ Принудительно идем в qdrant_rag")
+            return Command(goto="qdrant_rag")
+
 

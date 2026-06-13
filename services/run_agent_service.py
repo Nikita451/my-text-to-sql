@@ -33,7 +33,8 @@ async def run_agent_stream(user_message: str, thread_id: str, col_name: str, db_
          "sql_result": "",
          "sql_query": "",
          "col_name": col_name,
-         "db_name": db_name
+         "db_name": db_name,
+         "chart": None,
     }
     
     try:
@@ -67,9 +68,11 @@ async def run_agent_stream(user_message: str, thread_id: str, col_name: str, db_
         
         if final_messages:
             final_text = final_messages[-1].content
+            chart = state_data.values.get("chart", None)
             final_response = {
                 "type": "final_answer",
-                "content": str(final_text)
+                "content": str(final_text),
+                "chart": chart,
             }
             yield f"data: {json.dumps(final_response, ensure_ascii=False)}\n\n"
             

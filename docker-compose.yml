@@ -74,9 +74,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
-    # Копируем файлы из корня проекта в раб директорию app контейнера
-      - .:/app
-      - /app/ui
+      # Копируем файлы из корня проекта в раб директорию app контейнера
+      # for development...
+      # - .:/app
+      # - /app/ui
+      # - /app/.venv
       - /app/postgres_storage      # Скрываем бинарные данные PostgreSQL
       - /app/qdrant_storage        # Скрываем данные векторной базы Qdrant
       # Автономные тома для начального запуска (живут дольше контейнера)
@@ -93,7 +95,8 @@ services:
       # Инструктируем библиотеки сохранять файлы строго по этим путям
       - HF_HOME=/root/.cache/huggingface
       - FASTEMBED_CACHE_PATH=/root/.cache/fastembed_cache
-    command: uvicorn agent:app_fastapi --host 0.0.0.0 --port 8000 --reload
+    # command: uvicorn agent:app_fastapi --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn agent:app_fastapi --host 0.0.0.0 --port 8000
     # command: sh -c "uv sync && uv run uvicorn agent:app_fastapi --host 0.0.0.0 --port 8000 --reload"
     # command: sh -c "uv sync --frozen && uv run uvicorn agent:app_fastapi --host 0.0.0.0 --port 8000"
 
@@ -110,10 +113,12 @@ services:
     working_dir: /app
     ports:
       - "3001:3001"
-    volumes:
-      - ./ui:/app
+    # volumes:
+      # for development...
+      # - ./ui:/app
       # Docker полностью проигнорирует локальные node_modules и установит пакеты с нуля.
-      - /app/node_modules
+      # - /app/node_modules
+      # - /app/.next # Ускоряет сборку, не засоряя диск
     environment:
       - PORT=3001
       - NEXT_PUBLIC_API_URL=http://localhost:8000

@@ -36,6 +36,7 @@ if __name__ == "__main__":
          "sql_query": "",
          "db_name": "mydb",
         "col_name": "db_metadata",
+        "chart": None,
     }
 
     for event in app.stream(input_1, config=config, stream_mode="values"):
@@ -53,6 +54,7 @@ if __name__ == "__main__":
         "sql_query": "",
         "db_name": "mydb",
         "col_name": "db_metadata",
+        "chart": None,
     }
 
     for event in app.stream(input_2, config=config, stream_mode="values"):

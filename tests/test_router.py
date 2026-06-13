@@ -26,6 +26,7 @@ def test_router_decisions(user_message, expected_agent):
         "sql_query": "",
         "db_name": "mydb",
         "col_name": "db_metadata",
+        "chart": None,
     }
     
     # 2. Вызываем наш узел
