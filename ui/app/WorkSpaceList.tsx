@@ -10,8 +10,6 @@ interface WorkspaceListProps {
 
 export default function WorkspaceList({ initialWorkspaces }: WorkspaceListProps) {
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Фильтруем данные в рантайме браузера
   const filteredWorkspaces = initialWorkspaces.filter(ws => 
     ws.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (ws.description || '').toLowerCase().includes(searchTerm.toLowerCase())
@@ -19,19 +17,16 @@ export default function WorkspaceList({ initialWorkspaces }: WorkspaceListProps)
 
   return (
     <div>
-      {/* Поиск */}
         <div className="relative mb-8 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Поиск по названию или описанию..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-[#070A13] border border-slate-800 rounded-xl py-2.5 pl-10 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-blue-500/80 transition-all"
+            className="w-full bg-[#f4f4f4] border border-slate-200 rounded-lg py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder-slate-400 outline-none hover:border-slate-300 focus:bg-white focus:border-slate-900 focus:ring-1 focus:ring-slate-900 transition-all"
           />
         </div>
-
-        {/* Сетка элементов */}
         {filteredWorkspaces.length === 0 ? (
           <div className="border border-dashed border-slate-800 rounded-2xl p-12 text-center max-w-md mx-auto mt-12">
             <Layers className="w-8 h-8 text-slate-600 mx-auto mb-3" />
@@ -44,38 +39,41 @@ export default function WorkspaceList({ initialWorkspaces }: WorkspaceListProps)
               <Link 
                 key={ws.id} 
                 href={`/chat?workspace_id=${ws.id}`}
-                className="group relative bg-[#070A13] border border-slate-800/80 rounded-2xl p-5 hover:border-slate-700/80 hover:bg-[#090D1A] transition-all duration-300 flex flex-col justify-between shadow-sm hover:shadow-xl hover:shadow-blue-600/[0.01]"
+                className="group relative bg-[#f4f4f4] border border-slate-200/80 rounded-xl p-6 hover:border-blue-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-200 flex flex-col justify-between"
               >
                 <div>
-                  {/* Заголовок карточки */}
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <h3 className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors truncate">
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <h3 className="font-bold text-base text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                       {ws.name}
                     </h3>
-                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-blue-400 group-hover:translate-x-1 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0" />
+                    <div className="bg-slate-50 group-hover:bg-blue-50 p-1.5 rounded-md transition-colors flex-shrink-0">
+                      <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all" />
+                    </div>
                   </div>
-
-                  {/* Безопасное описание */}
-                  <p className="text-xs text-slate-400 leading-relaxed mb-6 line-clamp-3 group-hover:text-slate-300 transition-colors">
-                    {ws.description}
+                  <p className="text-xs text-slate-600 leading-relaxed mb-6 line-clamp-3">
+                    {ws.description || "Описание проекта отсутствует."}
                   </p>
                 </div>
 
-                {/* Безопасный футер: статус подключения инфраструктуры без раскрытия имен */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-800/40 text-[11px]">
-                  <div className="flex items-center gap-3 text-slate-500">
-                    <span className="flex items-center gap-1" title="База данных PostgreSQL подключена">
-                      <Database className="w-3 h-3 text-blue-500/70" />
-                      <span className="text-[10px]">SQL</span>
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-[11px]">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-blue-50/70 text-blue-700 font-medium">
+                      <Database className="w-3.5 h-3.5" />
+                      <span>SQL</span>
                     </span>
-                    <span className="flex items-center gap-1" title="Векторная коллекция Qdrant активна">
-                      <Cpu className="w-3 h-3 text-indigo-500/70" />
-                      <span className="text-[10px]">Vector</span>
+                    <span className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-indigo-50/70 text-indigo-700 font-medium">
+                      <Cpu className="w-3.5 h-3.5" />
+                      <span>Vector</span>
                     </span>
                   </div>
-                  <span className="text-slate-500 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3 opacity-60" />
-                    {ws.created_at}
+                  
+                  <span className="text-slate-900 flex items-center gap-1.5 font-medium">
+                    <MessageSquare className="w-3.5 h-3.5 text-slate-900" />
+                    {new Intl.DateTimeFormat('ru-RU', {
+                      day: 'numeric',
+                      month: 'long', // 'long' выведет "июня", 'numeric' выведет "06"
+                      year: 'numeric'
+                    }).format(new Date(ws.created_at))}
                   </span>
                 </div>
               </Link>

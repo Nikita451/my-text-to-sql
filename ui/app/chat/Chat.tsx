@@ -16,6 +16,7 @@ export default function Home({workspace}: ChatProps) {
   const [status, setStatus] = useState<string>(''); // Сюда пишем текущего агента
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const projectName = workspace.name;
 
   // Автопрокрутка чата вниз при новых сообщениях
   useEffect(() => {
@@ -102,7 +103,7 @@ export default function Home({workspace}: ChatProps) {
   };
 
   return (
-    <div>
+    <div className='flex-1 flex flex-col overflow-hidden w-full'>
       {/* Окно сообщений */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4 max-w-4xl w-full mx-auto">
         {messages.length === 0 && (
@@ -131,12 +132,10 @@ export default function Home({workspace}: ChatProps) {
                   <ChatChart chartData={msg.chart} />
                 </div>
               )}
-
             </div>
           </div>
         ))}
         
-
         {/* Логгер статуса размышлений агентов */}
         {isLoading && (
           <div className="flex justify-start items-center gap-3 bg-indigo-50 border border-indigo-100 p-3 rounded-xl max-w-xl animate-pulse">
@@ -146,22 +145,27 @@ export default function Home({workspace}: ChatProps) {
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Форма отправки */}
-      <footer className="bg-white border-t border-slate-200 p-4 shadow-lg">
-        <form onSubmit={handleSubmit} className="max-w-4xl w-full mx-auto flex gap-3">
+      <footer className="bg-white border-t border-slate-200 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.02)] flex-shrink-0">
+        <form onSubmit={handleSubmit} className="max-w-4xl w-full mx-auto flex items-center gap-3">
+          <div className="hidden sm:inline-flex items-center gap-2 px-3 py-3 h-[46px] rounded-xl bg-slate-50 border border-slate-200/80 shadow-sm whitespace-nowrap flex-shrink-0">
+            {/* Пульсирующая точка активного контекста */}
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-xs font-semibold text-slate-500">
+              Проект: <span className="text-slate-900 font-bold">{projectName}</span>
+            </span>
+          </div>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Например: Сколько заказов сделал самый активный пользователь?"
+            placeholder="Спросите меня что-нибудь на обычном языке..."
             disabled={isLoading}
-            className="flex-1 p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 text-sm"
+            className="flex-1 p-3 h-[46px] bg-slate-50 border border-slate-200 rounded-xl outline-none hover:bg-slate-100/50 focus:bg-white focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 disabled:bg-slate-100 text-sm text-slate-900 placeholder-slate-400 transition-all"
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-3 rounded-xl transition disabled:bg-slate-300 text-sm"
+            className="bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 h-[46px] rounded-xl transition-all text-sm disabled:bg-slate-100 disabled:text-slate-400 disabled:border-slate-200 disabled:cursor-not-allowed flex items-center justify-center active:scale-[0.98] flex-shrink-0"
           >
             Отправить
           </button>

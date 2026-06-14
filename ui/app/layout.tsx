@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ArrowUpRight, Database, Layers } from 'lucide-react';
+import Link from "next/link";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,9 +27,73 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-screen overflow-hidden`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="h-screen overflow-hidden m-0">
+        <div className="h-screen flex flex-col bg-[#FFF] text-slate-100 font-sans antialiased selection:bg-blue-500/30">
+
+          {/* Верхняя навигация */}
+          <header className="w-full border-b border-slate-800 bg-[#0B0F19] sticky top-0 z-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+              
+              {/* Левая часть: Логотип и Навигация */}
+              <div className="flex items-center gap-8">
+                {/* Логотип-ссылка на главную */}
+                <Link href="/" className="flex items-center gap-3 group focus:outline-none">
+                  <div className="bg-blue-600 p-2 rounded-lg transition-transform group-hover:scale-105">
+                    <Layers className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-lg text-white tracking-tight">SQL.ai</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-mono uppercase font-semibold bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">
+                      Agent
+                    </span>
+                  </div>
+                </Link>
+
+                {/* Навигационные ссылки Next.js */}
+                <nav className="hidden md:flex items-center gap-1 text-sm font-medium">
+                  <Link 
+                    href="/" 
+                    className="px-3 py-1.5 text-slate-200 hover:text-white rounded-md bg-slate-900 border border-slate-700 transition-colors"
+                  >
+                    Проекты
+                  </Link>
+                </nav>
+              </div>
+
+              {/* Правая часть: Статусы и Действие */}
+              <div className="flex items-center gap-3">
+                
+                {/* Статус ИИ */}
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#102A24] border border-emerald-500/30 text-xs font-medium text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>LLM: ONLINE</span>
+                </div>
+
+                {/* Активная БД */}
+                <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-700 text-xs font-mono text-slate-200">
+                  <Database className="w-3.5 h-3.5 text-slate-400" />
+                  <span>prod_db</span>
+                </div>
+
+                <div className="h-4 w-[1px] bg-slate-800 hidden sm:block" />
+
+                {/* Кнопка действия через Next Link */}
+                <Link 
+                  href="/docs" 
+                  className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs font-medium transition-colors"
+                >
+                  <span>Справка</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+
+              </div>
+            </div>
+          </header>
+          {children}
+        </div>
+      </body>
     </html>
   );
 }

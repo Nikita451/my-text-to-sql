@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus, Layers } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import WorkspaceList from './WorkSpaceList';
 import {getBaseApiUrl} from '@/utils/api'
 
@@ -30,51 +30,25 @@ export default async function WorkspacesDashboard() {
   const workspaces = await getWorkspaces();
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-100 font-sans antialiased selection:bg-blue-500/30">
-      
-      {/* Верхняя навигация */}
-      <header className="border-b border-slate-800/60 bg-[#070A13]/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20">
-              <Layers className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-              SQL.ai
-            </span>
-          </div>
-          <div className="text-sm text-slate-500 flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Сервер активен
-          </div>
+    <main className="max-w-6xl mx-auto px-4 py-12">    
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10 border-b border-slate-200 pb-6 bg-white">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 mb-2">
+            Мои проекты
+          </h1>
+          <p className="text-sm text-slate-600 leading-relaxed max-w-xl">
+            Выберите рабочий проект, чтобы начать диалог со своими данными через ИИ-ассистента.
+          </p>
         </div>
-      </header>
-
-      {/* Основной блок */}
-      <main className="max-w-6xl mx-auto px-4 py-12">
-        
-        {/* Заголовок и кнопка */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white mb-1">
-              Рабочие пространства
-            </h1>
-            <p className="text-sm text-slate-400">
-              Выберите проект, чтобы начать диалог со своими данными через ИИ-ассистента.
-            </p>
-          </div>
-          
-          <Link
-            href="/create"
-            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-blue-600/10 flex items-center justify-center gap-2 whitespace-nowrap"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Создать проект</span>
-          </Link>
-        </div>
-
-        <WorkspaceList initialWorkspaces={workspaces} />
-      </main>
-    </div>
+        <Link
+          href="/create"
+          className="bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2 whitespace-nowrap active:scale-[0.98] shadow-sm shadow-slate-900/5"
+        >
+          <Plus className="w-4 h-4 text-slate-400" />
+          <span>Создать проект</span>
+        </Link>
+      </div>
+      <WorkspaceList initialWorkspaces={workspaces} />
+    </main>
   );
 }
