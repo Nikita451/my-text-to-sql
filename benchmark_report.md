@@ -19,15 +19,15 @@
     | ID | Вопрос пользователя | Ожидаемые таблицы | Статус Eval-компонентов | Итог |
     | :--- | :--- | :--- | :--- | :---: |
     | TC-001 | Покажи email пользователей с максимальными тратами | `users, orders` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-002 | А сколько заказов сделал самый активный пользователь? | `users, orders` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-003 | Какие траты пользователя с email alice@example.com? | `users, orders` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-004 | Покажи список ID заказов, которые еще не были оплачены и висят в ожидании | `orders` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-005 | Сколько всего денег на счетах типа checking (расчетные) и валюта RUB (рубли) ? | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-006 | Какую сумму клиент с id = 1 потратил в категории Супермаркеты? | `accounts, transactions` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-007 | Найди клиентов с любой суммой оставшейся задолженности по кредитам | `customers, loans` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-008 | Сколько всего активных клиентов зарегистрировано в банке? | `customers` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `SKIP` | 🔴 **FAIL** |
-| TC-009 | Выведи номера счетов, которые были открыты в текущем 2026 году | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-| TC-010 | Какой средний баланс на счетах в валюте RUB? | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-002 | А сколько заказов сделал самый активный пользователь? | `users, orders` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-003 | Какие траты пользователя с email alice@example.com? | `users, orders` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-004 | Покажи список ID заказов, которые еще не были оплачены и висят в ожидании | `orders` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-005 | Сколько всего денег на счетах типа checking (расчетные) и валюта RUB (рубли) ? | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-006 | Какую сумму клиент с id = 1 потратил в категории Супермаркеты? | `accounts, transactions` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-007 | Найди клиентов с любой суммой оставшейся задолженности по кредитам | `customers, loans` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-008 | Сколько всего активных клиентов зарегистрировано в банке? | `customers` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `SKIP` | 🔴 **FAIL** |
+    | TC-009 | Выведи номера счетов, которые были открыты в текущем 2026 году | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
+    | TC-010 | Какой средний баланс на счетах в валюте RUB? | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
 
 ---
 
