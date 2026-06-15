@@ -194,7 +194,7 @@ docker compose down
 | Метрика | Значение | Источник данных / Инструмент |
 | :--- | :--- | :--- |
 | **Success Rate (Точность)** | **90%** | Сводный отчет выполнения бенчмарка (9/10) |
-| **Latency P95 (Задержка)** | **6.0 сек** | Langfuse Dashboard (95th Percentile Latency) |
+| **Latency P95 (Задержка)** | **22.0 сек** | Langfuse Dashboard (95th Percentile Latency) |
 | **Cost per Run (Стоимость)** | **~$0.0005** | Langfuse Dashboard + аналитический расчет |
 
 ### 📈 График задержки (Latency P95)
