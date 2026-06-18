@@ -25,7 +25,7 @@
     | TC-005 | Сколько всего денег на счетах типа checking (расчетные) и валюта RUB (рубли) ? | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
     | TC-006 | Какую сумму клиент с id = 1 потратил в категории Супермаркеты? | `accounts, transactions` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
     | TC-007 | Найди клиентов с любой суммой оставшейся задолженности по кредитам | `customers, loans` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
-    | TC-008 | Сколько всего активных клиентов зарегистрировано в банке? | `customers` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `SKIP` | 🔴 **FAIL** |
+    | TC-008 | Сколько всего активных клиентов зарегистрировано в банке? | `customers` | 🛠️ Tool: `FAIL`<br>💻 Assert: `PASS`<br>🧠 Judge: `SKIP` | 🔴 **FAIL** |
     | TC-009 | Выведи номера счетов, которые были открыты в текущем 2026 году | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
     | TC-010 | Какой средний баланс на счетах в валюте RUB? | `accounts` | 🛠️ Tool: `PASS`<br>💻 Assert: `PASS`<br>🧠 Judge: `PASS` | 🟢 **PASS** |
 
